@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+moviepy
+opencv-python
+numpy
+pillow
+librosa
+google-generativeai
+proglog
+python-multipart
