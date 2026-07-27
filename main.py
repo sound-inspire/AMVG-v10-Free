@@ -40,6 +40,17 @@ last_filter_error_log = ""
 
 
 app = FastAPI(title="AMVG V10 Free API")
+@app.post("/shutdown")
+async def shutdown_server():
+    import os
+    import threading
+    import time
+    def kill_server():
+        time.sleep(1) # クライアントに成功レスポンスを返す猶予を与える
+        os._exit(0)   # プロセスを完全終了
+    threading.Thread(target=kill_server, daemon=True).start()
+    return {"status": "success", "message": "SYSTEM SHUTDOWN SEQUENCE INITIATED"}
+    
 @app.get('/favicon.ico', include_in_schema=False)
 async def favicon():
     from fastapi.responses import Response
