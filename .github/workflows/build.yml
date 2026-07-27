@@ -33,8 +33,9 @@ jobs:
         # --noconsole : 起動時の黒いコマンドプロンプト画面を隠蔽
         # --onedir    : 起動速度を優先し、単一ファイルではなくフォルダ形式で出力
         # --add-data  : UIとプリセットデータを内部に梱包
-        pyinstaller --name "AMVG_V10_Free" --noconfirm --onedir --noconsole --add-data "index.html;." --add-data "ai_filters.json;." main.py
-
+        # --copy-metadata : imageioのバージョン情報読み込みエラーを回避
+        pyinstaller --name "AMVG_V10_Free" --noconfirm --onedir --noconsole --copy-metadata imageio --add-data "index.html;." --add-data "ai_filters.json;." main.py
+    
     - name: Create Release ZIP
       run: |
         # ユーザーに配布しやすいよう、出力されたフォルダを丸ごとZIP圧縮
