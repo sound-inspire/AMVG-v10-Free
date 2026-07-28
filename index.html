@@ -485,13 +485,23 @@ height: 250px;">                                    <!-- 小節ルーラーや�
         audioDropZone = document.getElementById('audio-drop-zone');
         inputAudio = document.getElementById('input-audio');
         audioFileName = document.getElementById('audio-file-name');
+        
         const BUILTIN_PRESET_FILTERS = {};
 
-       const savedPyFiltersList = document.getElementById('saved-py-filters-list');
-       const btnToggleAllFilters = document.getElementById('btn-toggle-all-filters');
-       const btnSaveCurrentPyFilter = document.getElementById('btn-save-current-py-filter');
-       let loadedFiltersData = {};
-       let activeFilterChecks = {}; /* filterName -> boolean */
+        const savedPyFiltersList = document.getElementById('saved-py-filters-list');
+        const btnToggleAllFilters = document.getElementById('chk-select-all-filters');
+        const btnSaveCurrentPyFilter = document.getElementById('btn-save-current-py-filter');
+        
+        let loadedFiltersData = {};
+        let activeFilterChecks = {}; /* filterName -> boolean */
+        let currentEditingFilterName = "";
+
+        function getApiUrl(endpoint) {
+            if (window.location.protocol === 'file:') {
+                return 'http://localhost:8000' + endpoint;
+            }
+            return endpoint;
+        }
 
         async function loadPresetFilters() {
             if (!savedPyFiltersList) return;
@@ -514,71 +524,7 @@ height: 250px;">                                    <!-- 小節ルーラーや�
             renderFilterListUI();
         }
 
-        lyricsDropZone = document.getElementById('lyrics-drop-zone');
-        inputLyrics = document.getElementById('input-lyrics');
-        lyricsFileName = document.getElementById('lyrics-file-name');
-        assetsDropZone = document.getElementById('assets-drop-zone');
         inputAssets = document.getElementById('input-assets');
-    
-        /* PRESET FILTER & FILTER PREVIEW MANAGEMENT */
-        function getApiUrl(endpoint) {
-            if (window.location.protocol === 'file:') {
-                return 'http://localhost:8000' + endpoint;
-            }
-            return endpoint;
-        }
-import numpy as np
-h, w = frame.shape[:2]
-cx, cy = w / 2.0, h / 2.0
-grid_y, grid_x = np.mgrid[0:h, 0:w].astype(np.float32)
-dx, dy = grid_x - cx, grid_y - cy
-r = np.maximum(np.sqrt(dx**2 + dy**2), 1.0)
-beat_phase = t * (bpm / 60.0) * np.pi
-zoom = 1.0 - (0.08 * energy * np.sin(beat_phase))
-dx, dy = dx * zoom, dy * zoom
-twist_strength = (1.8 * energy) * np.sin(beat_phase)
-angle = twist_strength * np.exp(-r / (0.45 * min(h, w)))
-cos_a, sin_a = np.cos(angle), np.sin(angle)
-rx = cx + dx * cos_a - dy * sin_a
-ry = cy + dx * sin_a + dy * cos_a
-wave_amp = 12.0 + 35.0 * energy
-map_x = rx + wave_amp * np.sin(ry * 0.015 + beat_phase)
-map_y = ry + wave_amp * np.cos(rx * 0.015 + beat_phase)
-output = cv2.remap(frame, map_x.astype(np.float32), map_y.astype(np.float32), cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT_101)
-return output`
-};
-
-       const savedPyFiltersList = document.getElementById('saved-py-filters-list');
-       const btnToggleAllFilters = document.getElementById('btn-toggle-all-filters');
-       const btnSaveCurrentPyFilter = document.getElementById('btn-save-current-py-filter');
-               let loadedFiltersData = {};
-
-       let activeFilterChecks = {};
-
-/* filterName -> boolean */
-        async function loadPresetFilters() {
-            if (!savedPyFiltersList) return;
-                       loadedFiltersData = Object.assign({}, BUILTIN_PRESET_FILTERS);
-           try {
-               const res = await fetch(getApiUrl('/filters'));
-               if (res.ok) {
-                   const serverFilters = await res.json();
-                   Object.assign(loadedFiltersData, serverFilters);
-               }
-           }
-catch(e) {
-               console.warn("Server filters fetch failed, using builtin filters:", e);
-           }
-           /* 初期化（すべてデフォルトでチェックOFF） */
-            Object.keys(loadedFiltersData).forEach(name => {
-                if (activeFilterChecks[name] === undefined) {
-                    activeFilterChecks[name] = false;
-                }
-            
-           });
-           renderFilterListUI();
-       }
-       let currentEditingFilterName = "";
        function syncSelectAllCheckboxState() {
            const chkSelectAll = document.getElementById('chk-select-all-filters');
            if (!chkSelectAll) return;
