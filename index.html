@@ -596,8 +596,6 @@ catch(e) {
                        if (editorEl) editorEl.value = loadedFiltersData[name];
                        if (container) container.classList.remove('hidden');
                                                currentEditingFilterName = name;
-                       activeFilterChecks[name] = true;
-                       renderFilterListUI();
                        console.log(`Editing filter: ${name}`);
                    }
                });
@@ -686,7 +684,7 @@ catch(err) {
        function getActiveFilterCodes() {
            const codes = [];
            Object.keys(loadedFiltersData).forEach(name => {
-               if (activeFilterChecks[name] !== false && loadedFiltersData[name]) {
+               if (activeFilterChecks[name] === true && loadedFiltersData[name]) {
                    codes.push(loadedFiltersData[name]);
                }
            });
