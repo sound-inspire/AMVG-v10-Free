@@ -126,7 +126,7 @@ def draw_japanese_lyric(
     style: str = "SIMPLE",
     t: float = 0.0,
     bpm: float = 120.0,
-    intensity: float = 0.5,
+    intensity: float = 1.0,
     start_time: float = 0.0,
     font_name: str = "gothic",
     return_meta: bool = False,
@@ -141,14 +141,13 @@ def draw_japanese_lyric(
     text_img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(text_img)
     
-    # 2. キネティックサイズ計算 (BPM・オフセット完全同期 Beat Pumping)
+    # 2. キネティックサイズ計算 (BPM・オフセット完全同期 Beat Pumping - 通常版高精度ロジック)
     beat_duration = 60.0 / max(1.0, bpm)
     time_since_beat = (t - bpm_offset) % beat_duration
     if time_since_beat < 0:
         time_since_beat += beat_duration
-    norm_t = time_since_beat / beat_duration
-    # 滑らかなイージング減衰カーブ
-    beat_signal = max(0.0, (1.0 - norm_t) ** 2.2)
+    decay_constant = 6.0 / beat_duration
+    beat_signal = math.exp(-decay_constant * time_since_beat)
     
     # 基本フォントサイズ (画面の高さにスケール)
     base_size = int(35 * (h / 720.0))
@@ -592,10 +591,8 @@ def run_pipeline(
             time_since_beat = (t - bpm_offset) % beat_interval
             if time_since_beat < 0:
                 time_since_beat += beat_interval
-            
-            # 滑らかなビートイージング信号 (拍の頭で1.0、拍の後半で滑らかに0へ)
-            norm_beat_t = time_since_beat / beat_interval
-            beat_signal = max(0.0, (1.0 - norm_beat_t) ** 2.2)
+            decay = 12.0
+            beat_signal = math.exp(-decay * time_since_beat)
             
             # 生体データのノイズ上書き描画 (BPM同期)
             overlay_frame = biometric_overlay.apply_biometric_overlay(
@@ -667,7 +664,7 @@ def run_pipeline(
                 except Exception:
                     pass
 
-            if not filter_list and not has_explicit_filter_config:
+            if not filter_list:
                 effective_code = current_filter_code if current_filter_code else compiled_ai_filter
                 if effective_code:
                     filter_list = [effective_code]
