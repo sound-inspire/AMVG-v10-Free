@@ -40,17 +40,6 @@ last_filter_error_log = ""
 
 
 app = FastAPI(title="AMVG V10 Free API")
-@app.post("/shutdown")
-async def shutdown_server():
-    import os
-    import threading
-    import time
-    def kill_server():
-        time.sleep(1) # クライアントに成功レスポンスを返す猶予を与える
-        os._exit(0)   # プロセスを完全終了
-    threading.Thread(target=kill_server, daemon=True).start()
-    return {"status": "success", "message": "SYSTEM SHUTDOWN SEQUENCE INITIATED"}
-    
 @app.get('/favicon.ico', include_in_schema=False)
 async def favicon():
     from fastapi.responses import Response
@@ -129,7 +118,8 @@ def draw_japanese_lyric(
     intensity: float = 0.5,
     start_time: float = 0.0,
     font_name: str = "gothic",
-    return_meta: bool = False
+    return_meta: bool = False,
+    bpm_offset: float = 0.0
 ):
     """PILとOpenCVを組み合わせて、キネティックおよびグリッチ効果をかけた歌詞を描画する (v5完全準拠ロジック)"""
     import random
@@ -140,12 +130,14 @@ def draw_japanese_lyric(
     text_img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(text_img)
     
-    # 2. キネティックサイズ計算 (BPM連動 Beat Pumping)
+    # 2. キネティックサイズ計算 (BPM・オフセット完全同期 Beat Pumping)
     beat_duration = 60.0 / max(1.0, bpm)
-    t_aligned = max(0.0, t - start_time)
-    time_since_beat = t_aligned % beat_duration
-    decay_constant = 4.0 / beat_duration
-    beat_signal = math.exp(-decay_constant * time_since_beat)
+    time_since_beat = (t - bpm_offset) % beat_duration
+    if time_since_beat < 0:
+        time_since_beat += beat_duration
+    norm_t = time_since_beat / beat_duration
+    # 滑らかなイージング減衰カーブ
+    beat_signal = max(0.0, (1.0 - norm_t) ** 2.2)
     
     # 基本フォントサイズ (画面の高さにスケール)
     base_size = int(35 * (h / 720.0))
@@ -586,8 +578,12 @@ def run_pipeline(
             energy = get_energy_at(t)
             beat_interval = 60.0 / max(1.0, bpm)
             time_since_beat = (t - bpm_offset) % beat_interval
-            decay = 12.0
-            beat_signal = math.exp(-decay * time_since_beat)
+            if time_since_beat < 0:
+                time_since_beat += beat_interval
+            
+            # 滑らかなビートイージング信号 (拍の頭で1.0、拍の後半で滑らかに0へ)
+            norm_beat_t = time_since_beat / beat_interval
+            beat_signal = max(0.0, (1.0 - norm_beat_t) ** 2.2)
             
             # 生体データのノイズ上書き描画 (BPM同期)
             overlay_frame = biometric_overlay.apply_biometric_overlay(
@@ -608,12 +604,17 @@ def run_pipeline(
                 elif current_biometric_opacity > 0:
                     frame = cv2.addWeighted(overlay_frame, current_biometric_opacity, frame, 1.0 - current_biometric_opacity, 0)
             
-            # 【Antigravity Phase 2: 静止画の生体駆動化 (Kinetic Animation / 空間歪曲)】
-            zoom_amp = 0.03 + 0.05 * energy
+            # 【Antigravity Phase 2: 静止画の生体駆動化 (BPM完全同期 空間歪曲 / Smooth Beat Pumping)】
+            zoom_amp = 0.02 + 0.04 * energy
             zoom_scale = 1.0 + zoom_amp * beat_signal
-            twitch_amp = 2.0 + 12.0 * energy * beat_signal
-            wiggle_x = math.sin(t * 14.3) * twitch_amp + (np.random.rand() - 0.5) * 4.0 * energy
-            wiggle_y = math.cos(t * 11.7) * twitch_amp + (np.random.rand() - 0.5) * 4.0 * energy
+
+            # BPMに完全同期したビート位相 (拍数)
+            beats_elapsed = (t - bpm_offset) * (bpm / 60.0)
+            shake_phase = beats_elapsed * 2.0 * math.pi
+
+            twitch_amp = 1.5 + 8.0 * energy * beat_signal
+            wiggle_x = math.sin(shake_phase) * twitch_amp
+            wiggle_y = math.sin(shake_phase * 0.5) * twitch_amp
 
             h_img, w_img = frame.shape[:2]
             center = (w_img / 2.0, h_img / 2.0)
@@ -775,7 +776,8 @@ def run_pipeline(
                     intensity=current_glitch_int,
                     start_time=sec_start_sec,
                     font_name=subtitle_font,
-                    return_meta=True
+                    return_meta=True,
+                    bpm_offset=bpm_offset
                 )
                 
                 if sec_id not in verified_subtitles_logged:
@@ -1551,49 +1553,34 @@ async def api_webui():
 # ==========================================
 
 def main():
-    import sys
-    import os
-    # --noconsole環境でのprintエラー（stdoutがNone）を回避する安全装置
-    if sys.stdout is None:
-        sys.stdout = open(os.devnull, 'w')
-    if sys.stderr is None:
-        sys.stderr = open(os.devnull, 'w')
-
     parser = argparse.ArgumentParser(description="Antigravity MV Generator V10 Free")
     
-    parser.add_argument("--web", action="store_true", help="Web UIサーバーモードで起動する")
+    parser.add_argument("--web", action="store_true", help="Web UI繧ｵ繝ｼ繝舌繝｢繝ｼ繝峨〒襍ｷ蜍輔☆繧")
     parser.add_argument("--port", type=int, default=8003, help="Webサーバーのポート番号")
     
-    # CLI用
-    parser.add_argument("--audio", type=str, help="音声ファイルへのパス")
+    # CLI逕ｨ
+    parser.add_argument("--audio", type=str, help="髻ｳ螢ｰ繝輔ぃ繧､繝ｫ縺ｸ縺ｮ繝代せ")
     parser.add_argument("--assets", type=str, help="背景アセットへのパス")
     parser.add_argument("--output", type=str, default="output_v2.mp4", help="出力ファイル名")
     parser.add_argument("--aspect", type=str, choices=["16:9", "9:16"], default="16:9", help="アスペクト比")
-    parser.add_argument("--fps", type=int, default=30, help="出力動画のフレームレート")
-    parser.add_argument("--api-key", type=str, help="Gemini API キー")
-    parser.add_argument("--lyrics", type=str, help="歌詞テキストまたはSRTへのパス")
-    parser.add_argument("--metadata-json", type=str, help="すでに生成済みのメタデータJSONを指定")
+    parser.add_argument("--fps", type=int, default=30, help="蜃ｺ蜉帛虚逕ｻ縺ｮ繝輔Ξ繝ｼ繝繝ｬ繝ｼ繝")
+    parser.add_argument("--api-key", type=str, help="Gemini API 繧ｭ繝ｼ")
+    parser.add_argument("--lyrics", type=str, help="豁瑚ｩ槭ユ繧ｭ繧ｹ繝医∪縺溘SRT縺ｸ縺ｮ繝代せ")
+    parser.add_argument("--metadata-json", type=str, help="縺吶〒縺ｫ逕滓貂医∩縺ｮ繝｡繧ｿ繝繧ｿJSON繧呈欠螳")
     
     args = parser.parse_args()
-    
-    # 【スマート化】引数が何も指定されていない（ダブルクリック起動）場合は強制的にWebUIモードにする
-    if not args.web and not args.audio and not args.assets:
-        args.web = True
     
     if args.web:
         print("[WebUI] Starting A.M.V.G v2 Web Server...")
         import webbrowser
-        import threading
-        import time
-        import uvicorn
         
         def open_browser():
+            import time
             time.sleep(1.5)
             webbrowser.open(f"http://127.0.0.1:{args.port}")
             
         threading.Thread(target=open_browser, daemon=True).start()
-        # EXE環境でuvicornを安全に起動するため、"main:app" ではなく app オブジェクトを直接渡す
-        uvicorn.run(app, host="127.0.0.1", port=args.port)
+        uvicorn.run("main:app", host="127.0.0.1", port=args.port, reload=True)
         return
         
     print("=" * 60)
@@ -1605,7 +1592,7 @@ def main():
         print("\n[Error] --audio and --assets are required in CLI mode.")
         sys.exit(1)
         
-    # APIキーの取得優先度 (引数 -> 環境変数)
+    # API繧ｭ繝ｼ縺ｮ蜿門ｾ怜━蜈亥ｺｦ (蠑墓焚 -> 迺ｰ蠅�､画焚)
     api_key = args.api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     
     try:
@@ -1623,12 +1610,8 @@ def main():
         )
         print(f"[Success] Render complete! Output file: {args.output}")
     except Exception as e:
-        import traceback
-        print(f"[Error] Pipeline execution failed: {e}\n{traceback.format_exc()}")
+        print(f"[Error] Pipeline execution failed: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
-    # PyInstallerでのマルチプロセス実行（uvicorn等）が暴走・無限ループするのを防ぐ必須コード
-    import multiprocessing
-    multiprocessing.freeze_support()
     main()
