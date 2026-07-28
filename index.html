@@ -1890,10 +1890,12 @@ finally {
                 formData.append('filter_exec_mode', execMode);
 
                 const activeCodes = (typeof getActiveFilterCodes === 'function') ? getActiveFilterCodes() : [];
+                formData.append('ai_filter_codes_json', JSON.stringify(activeCodes));
                 if (activeCodes.length > 0) {
-                    formData.append('ai_filter_codes_json', JSON.stringify(activeCodes));
                     formData.append('ai_filter_code', activeCodes[0]);
                     addLog(`ATTACHING ${activeCodes.length} ACTIVE PYTHON AI FILTERS...`, "system");
+                } else {
+                    addLog(`NO PYTHON AI FILTERS SELECTED (PASS-THROUGH MODE)`, "system");
                 }
 
                 try {
