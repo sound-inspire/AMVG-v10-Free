@@ -575,16 +575,17 @@ def run_pipeline(
                 current_biometric_opacity = active_sec.get("biometric_opacity", 1.0)
                 current_lyric_style = active_sec.get("lyric_effect_style", current_lyric_style)
                 
-                filter_name = active_sec.get("active_filter", "none")
-                if filter_name != "none":
-                    if os.path.exists("ai_filters.json"):
-                        try:
-                            with open("ai_filters.json", "r", encoding="utf-8") as f_json:
-                                filters_data = json.load(f_json)
-                                if filter_name in filters_data:
-                                    current_filter_code = filters_data[filter_name]
-                        except Exception:
-                            pass
+                if enable_ai_orchestration:
+                    filter_name = active_sec.get("active_filter", "none")
+                    if filter_name != "none":
+                        if os.path.exists("ai_filters.json"):
+                            try:
+                                with open("ai_filters.json", "r", encoding="utf-8") as f_json:
+                                    filters_data = json.load(f_json)
+                                    if filter_name in filters_data:
+                                        current_filter_code = filters_data[filter_name]
+                            except Exception:
+                                pass
 
             energy = get_energy_at(t)
             beat_interval = 60.0 / max(1.0, bpm)
@@ -655,16 +656,18 @@ def run_pipeline(
             
             # 複数フィルターのパイプライン実行 (マルチセレクト対応)
             filter_list = []
-            if ai_filter_codes_json:
+            has_explicit_filter_config = False
+            if ai_filter_codes_json is not None:
                 try:
                     import json
                     parsed = json.loads(ai_filter_codes_json)
                     if isinstance(parsed, list):
+                        has_explicit_filter_config = True
                         filter_list = [c for c in parsed if isinstance(c, str) and c.strip()]
                 except Exception:
                     pass
 
-            if not filter_list:
+            if not filter_list and not has_explicit_filter_config:
                 effective_code = current_filter_code if current_filter_code else compiled_ai_filter
                 if effective_code:
                     filter_list = [effective_code]
