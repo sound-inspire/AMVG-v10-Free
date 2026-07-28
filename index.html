@@ -466,17 +466,18 @@ width: 0%;">
 </div>                            <div id="timeline-playback-line" class="absolute h-full w-[2px] bg-yellow-400 shadow-[0_0_4px_#facc15]" style="left: 0%;">
 </div>                        </div>                        <audio id="aligner-audio-element">
 </audio>                    </div>                    <!-- TIMELINE ROWS -->                    <div class="space-y-2">                        <div class="flex justify-between items-center">                            <span class="text-xs font-bold text-white">SUBTITLE TIMELINE CELLS (歌詞タイミング調整)</span>                                                        <!-- 編集モード切り替えトグル -->                            <div class="flex items-center space-x-1 bg-black/60 border border-cyan-500/30 p-0.5 rounded-lg">                                <button id="mode-cell-btn" class="px-3 py-1 text-[10px] font-bold rounded-md transition-all bg-cyan-500 text-black" type="button">セル編集</button>                                <button id="mode-timeline-btn" class="px-3 py-1 text-[10px] font-bold rounded-md transition-all text-cyan-400 hover:text-white" type="button">タイムライン編集</button>                            </div>                            <!-- セル編集用のアクションボタン (セル編集モード時のみ表示) -->                            <div class="flex items-center space-x-4" id="cell-actions-wrapper">                                <button id="btn-add-subtitle" class="text-[10px] border border-cyan-500/40 text-cyan-300 px-2 py-0.5 rounded bg-cyan-950/30 hover:bg-cyan-900/60 font-bold transition-all flex items-center gap-1">                                    <span>➕ ADD SUBTITLE</span>                                </button>                                <label class="flex items-center space-x-2 text-xs text-cyan-400 cursor-pointer">                                    <input type="checkbox" id="toggle-aligner-follow" checked class="accent-cyan-500">                                    <span>🔊 PLAYBACK FOLLOW</span>                                </label>                            </div>                        </div>                        <!-- 1. セル編集モード時の歌詞リストコンテナ -->                        <div class="border border-cyan-500/30 rounded-lg p-3 max-h-[324px] overflow-y-auto bg-black/60 timeline-scroll-area" id="timeline-rows-container">                            <div class="text-center text-gray-600 mt-16 text-xs">                                NO LYRICS LOADED. PASTE RAW LYRICS IN THE TEXTAREA ABOVE AND GENERATE CELLS.                            </div>                        </div>                        <!-- 2. タイムライン編集モード用パネル (初期状態は非表示) -->                        <div id="timeline-editor-container" class="hidden border border-cyan-500/30 rounded-lg p-3 bg-black/80 space-y-3">                            <!-- タイムラインコントロール -->                            <div class="flex flex-wrap items-center gap-4 text-xs text-slate-300 border-b border-cyan-500/20 pb-2">                                <div class="flex items-center space-x-1">                                    <span class="text-[10px] text-cyan-400 font-bold">BPM:</span>                                    <input type="number" id="timeline-bpm" class="w-14 bg-black border border-cyan-500/30 px-1.5 py-0.5 rounded text-white text-center font-mono" value="120" min="40" max="250">                                </div>                                <div class="flex items-center space-x-1">                                    <span class="text-[10px] text-cyan-400 font-bold">解像度:</span>                                    <select id="timeline-resolution" class="bg-black border border-cyan-500/30 px-1.5 py-0.5 rounded text-white text-xs">                                        <option value="1">1拍</option>                                        <option value="0.5">1/2拍</option>                                        <option value="0.25" selected>1/4拍 (16分音符)</option>                                        <option value="0.125">1/8拍</option>                                    </select>                                </div>                                <label class="flex items-center space-x-1.5 cursor-pointer text-[10px] text-cyan-400 font-bold">                                    <input type="checkbox" id="timeline-snap" checked class="accent-cyan-500">                                    <span>スナップ</span>                                </label>                                <div class="flex items-center space-x-2 ml-auto">                                    <span class="text-[9px] text-cyan-400 font-bold">ズーム:</span>                                    <input type="range" id="timeline-zoom" min="10" max="200" value="60" class="w-20 accent-cyan-500">                                    <button id="btn-add-subtitle-timeline" class="text-[10px] border border-cyan-500/40 text-cyan-300 px-2 py-0.5 rounded bg-cyan-950/30 hover:bg-cyan-900/60 font-bold transition-all flex items-center gap-1 ml-4" type="button">                                        <span>➕ ADD SUBTITLE</span>                                    </button>                                </div>                            </div>                            <!-- タイムラインスクロール領域 -->                            <div id="timeline-editor-wrapper" class="w-full overflow-x-auto overflow-y-hidden bg-[#0a0a14] border border-cyan-500/20 rounded relative min-h-[250px] select-none">                                <div id="timeline-editor-tracks" class="relative h-full" style="width: 1000px;
+           width: 1000px;
 height: 250px;">                                    <!-- 小節ルーラーや歌詞ブロックなどは JS で動的生成 -->                                </div>                            </div>                        </div>                    </div>                                        <button class="w-full py-2 bg-black border border-fuchsia-500 text-fuchsia-400 rounded text-xs font-bold hover:bg-fuchsia-500 hover:text-white transition-all" id="btn-snap-bpm" type="button">                        ⚡ SNAP TIMECODES TO BPM GRID (BPM吸着)                    </button>                    <div class="grid grid-cols-2 gap-4 pt-2">                        <button class="py-3 bg-black border border-cyan-500 text-cyan-400 hover:bg-cyan-500 hover:text-black rounded text-xs font-bold transition-all" id="btn-export-srt">                            💾 EXPORT SRT FILE                        </button>                        <button class="py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold rounded text-xs hover:shadow-[0_0_10px_rgba(16,185,129,0.3)] transition-all" id="btn-bind-srt">                            🔗 BIND TIMECODES TO VIDEO GENERATION                        </button>                    </div>                </div>                <!-- ========================================================= -->                <!-- TAB 4: SYSTEM MUTATOR (SELF-REPLICATION) -->                <!-- ========================================================= -->                <div id="section-mutate" class="tab-content hidden space-y-6">                    <div class="p-4 bg-gray-950 border border-fuchsia-500/40 rounded-lg space-y-4">                        <div class="flex items-center text-xs font-bold text-fuchsia-400">                            👾 SYSTEM MUTATOR (AI SELF-EVOLUTION ENGINE)                        </div>                        <p class="text-[10px] text-gray-400 leading-relaxed">                            この機能は、Gemini APIを利用して、このアプリ自体のソースコード（PythonサーバーまたはHTMLフロントエンド）を書き換える「自己増殖・自己進化システム」です。                            プロンプトで機能の追加、UIの修正、デザインの変更、バグ修正などを直接指示できます。                        </p>                        <div>                            <label class="block text-xs font-bold text-white mb-2">SELECT EVOLUTION TARGET (書き換え対象ファイル)</label>                            <select id="mutate-target" class="bg-black border border-fuchsia-500/50 text-fuchsia-300 text-xs rounded p-2 w-full">                                <option value="index.html">index.html (フロントエンド UI / JS Canvasエフェクトコア)</option>                                <option value="main.py">main.py (バックエンド Python / FastAPI サーバー / MoviePy)</option>                            </select>                        </div>                        <div>                            <label class="block text-xs font-bold text-white mb-2">EVOLUTION INSTRUCTIONS (進化指示プロンプト)</label>                            <textarea id="mutate-prompt" rows="5" placeholder="例: タイトル表示の横にネオンの絵文字を追加し、タブボタンの丸みを少しシャープにリファクタリングして。"                                 class="w-full bg-black border border-fuchsia-500/30 rounded p-2 text-xs text-fuchsia-300 focus:outline-none resize-none leading-normal">
 </textarea>                        </div>                        <div class="p-3 bg-red-500/10 border border-red-500/30 rounded text-[10px] text-red-400 leading-normal">                            ⚠️ <strong>CAUTION:</strong> コードの自己書き換えを実行します。書き換え前に自動で <code>.bak</code> ファイルが生成されます。Pythonコードの構文エラーは自動チェックされ、エラーがあれば上書きされません。                        </div>                        <button id="btn-self-mutate" class="w-full py-4 bg-gradient-to-r from-fuchsia-600 to-purple-700 hover:from-fuchsia-500 hover:to-purple-600 text-white font-black tracking-widest text-xs rounded-lg hover:shadow-[0_0_15px_rgba(217,70,239,0.4)] transition-all uppercase">                            MUTATE SYSTEM (自律進化を実行)                        </button>                        <div id="mutate-status" class="text-xs text-center font-mono h-4">
 </div>                    </div>                </div>            </div>            <!-- RIGHT PANEL (PREVIEW & CONSOLE) -->            <div id="right-panel" class="lg:col-span-6 flex flex-col space-y-6">                                <!-- PREVIEW SCREEN -->                <div class="relative bg-black rounded-lg border-2 border-cyan-500/40 overflow-hidden flex items-center justify-center min-h-[400px] md:min-h-[500px]">                    <div id="waiting-msg" class="text-cyan-600 text-center p-8 animate-pulse font-bold font-mono">                        <span class="block text-4xl mb-2">⚡</span>                        WAITING FOR VIDEO OR CONFIG...                    </div>                                        <!-- Canvas for Asset Factory Rendering -->                    <canvas id="main-canvas" class="w-full h-full object-contain bg-black hidden">
 </canvas>                    <video id="source-video" class="hidden" preload="auto" playsinline loop muted>
 </video>                                        <div id="rec-indicator" class="hidden absolute top-4 right-4 flex items-center space-x-2 bg-black/80 px-3 py-1 rounded-full border border-red-500/50">                        <div class="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping">
-</div>                        <span class="text-red-500 text-[10px] font-bold tracking-widest font-mono">REC</span>                    </div>                    <!-- AI Code Display Editor Overlay (Browser JS Canvas) -->                    <div id="code-overlay" class="absolute bottom-4 left-4 right-4 bg-black/90 border border-fuchsia-500/50 rounded p-3 hidden z-10 flex flex-col space-y-2 shadow-lg">                        <div class="text-[10px] text-fuchsia-400 flex justify-between items-center border-b border-fuchsia-500/30 pb-1">                            <span class="font-bold">AI_ASSET VIEW /* LIVE_CODE (JS) */</span>                            <div class="flex items-center space-x-2">                                <button onclick="document.getElementById('code-overlay').classList.add('hidden')" class="text-gray-500 hover:text-white text-xs">✕</button>                            </div>                        </div>                        <textarea id="code-editor" readonly placeholder="選択したアセットのJavaScriptコードが表示されます（Free版では閲覧のみ可能です）" class="w-full h-32 bg-gray-900/60 text-gray-400 font-mono text-[10px] p-2 border border-gray-800 rounded focus:outline-none resize-none leading-normal cursor-default">
+</div>                        <span class="text-red-500 text-[10px] font-bold tracking-widest font-mono">REC</span>                    </div>                    <!-- AI Code Display Editor Overlay (Browser JS Canvas) -->                    <div id="code-overlay" class="absolute bottom-4 left-4 right-4 bg-black/90 border border-fuchsia-500/50 rounded p-3 hidden z-10 flex flex-col space-y-2 shadow-lg">                        <div class="text-[10px] text-fuchsia-400 flex justify-between items-center border-b border-fuchsia-500/30 pb-1">                            <span class="font-bold">AI_ASSET VIEW /* LIVE_CODE (JS) */</span>                            <div class="flex items-center space-x-2">
+                                <button onclick="document.getElementById('code-overlay').classList.add('hidden')" class="text-gray-500 hover:text-white text-xs">✕</button>                            </div>                        </div>                        <textarea id="code-editor" readonly placeholder="選択したアセットのJavaScriptコードが表示されます（Free版では閲覧のみ可能です）" class="w-full h-32 bg-gray-900/60 text-gray-400 font-mono text-[10px] p-2 border border-gray-800 rounded focus:outline-none resize-none leading-normal cursor-default">
 </textarea>                        <div id="editor-status" class="text-[9px] text-gray-500 h-2">
 </div>                    </div>                    <!-- Video Preview Pane (MoviePy Output) -->                    <div class="absolute inset-0 w-full h-full bg-black hidden flex-col items-center justify-center" id="preview-pane" style="z-index: 10000;">                        <video id="output-video" controls class="w-full h-full object-contain bg-black">
 </video>                    </div>                </div>                <!-- CONSOLE LOG PANEL -->                <div class="bg-black/90 border border-green-500/40 rounded-lg p-4 h-48 overflow-y-auto font-mono text-xs text-green-400 shadow-[0_0_10px_rgba(57,255,20,0.05)]" id="console-panel">                    <div class="console-line system">[SYSTEM] INTEGRATED PIPELINE TERMINAL BIND SUCCESSFUL. READY.</div>                </div>            </div>        </div>    </div>    
 <script>
-        
         previewPane = document.getElementById('preview-pane');
         alignerAudio = document.getElementById('aligner-audio-element');
         outputVideo = document.getElementById('output-video');
@@ -484,6 +485,35 @@ height: 250px;">                                    <!-- 小節ルーラーや�
         audioDropZone = document.getElementById('audio-drop-zone');
         inputAudio = document.getElementById('input-audio');
         audioFileName = document.getElementById('audio-file-name');
+        const BUILTIN_PRESET_FILTERS = {};
+
+       const savedPyFiltersList = document.getElementById('saved-py-filters-list');
+       const btnToggleAllFilters = document.getElementById('btn-toggle-all-filters');
+       const btnSaveCurrentPyFilter = document.getElementById('btn-save-current-py-filter');
+       let loadedFiltersData = {};
+       let activeFilterChecks = {}; /* filterName -> boolean */
+
+        async function loadPresetFilters() {
+            if (!savedPyFiltersList) return;
+            loadedFiltersData = {};
+            try {
+                const res = await fetch(getApiUrl('/filters'));
+                if (res.ok) {
+                    const serverFilters = await res.json();
+                    loadedFiltersData = serverFilters || {};
+                }
+            } catch(e) {
+                console.warn("Server filters fetch failed:", e);
+            }
+            /* 初期化（すべてデフォルトでチェックOFF） */
+            Object.keys(loadedFiltersData).forEach(name => {
+                if (activeFilterChecks[name] === undefined) {
+                    activeFilterChecks[name] = false;
+                }
+            });
+            renderFilterListUI();
+        }
+
         lyricsDropZone = document.getElementById('lyrics-drop-zone');
         inputLyrics = document.getElementById('input-lyrics');
         lyricsFileName = document.getElementById('lyrics-file-name');
@@ -497,13 +527,6 @@ height: 250px;">                                    <!-- 小節ルーラーや�
             }
             return endpoint;
         }
-       const BUILTIN_PRESET_FILTERS = {
-           "歪み (Glitch Slice Distortion)": `import numpy as npimport randomdef apply_ai_filter(frame: np.ndarray, t: float, duration: float, bpm: float, energy: float) -> np.ndarray:    h, w = frame.shape[:2]    if bpm <= 0: bpm = 120.0    beat_interval = 60.0 / bpm    time_since_beat = t % beat_interval    decay_time = 0.12 + 0.10 * energy    beat_factor = max(0.0, 1.0 - (time_since_beat / decay_time)) if time_since_beat < decay_time else 0.0    magnitude = beat_factor * energy    if magnitude < 0.08: return frame    out = frame.copy()    num_slices = int(3 + 12 * magnitude)    for _ in range(num_slices):        slice_h = int((0.01 + 0.18 * random.random()) * h * magnitude)        if slice_h < 4: continue        y_center = random.randint(0, h - 1)        y1, y2 = max(0, y_center - slice_h // 2), min(h, y_center + slice_h // 2)
-if (y2 - y1) < 2: continue        max_shift = int((0.05 + 0.35 * random.random()) * w * magnitude)        if max_shift == 0: continue        dir_sign = random.choice([-1, 1])        r_shift = dir_sign * max_shift        slice_data = out[y1:y2, :].copy()        slice_data[:, :, 2] = np.roll(slice_data[:, :, 2], r_shift, axis=1)        slice_data[:, :, 0] = np.roll(slice_data[:, :, 0], -r_shift // 2, axis=1)
-out[y1:y2, :] = slice_data
-return out`,
-"曲る (Liquid Swirl & Prism)": `def apply_ai_filter(frame: np.ndarray, t: float, duration: float, bpm: float, energy: float) -> np.ndarray:
-import cv2
 import numpy as np
 h, w = frame.shape[:2]
 cx, cy = w / 2.0, h / 2.0
@@ -3155,6 +3178,44 @@ finally {
                 }
             });
         }
+
+        // Generator から SRT Aligner への BPM 情報自動伝達・同期ヘルパー
+        function syncBpmToAligner(direction = 'from_generator') {
+            const configBpmInput = document.getElementById('config-bpm');
+            const timelineBpmInput = document.getElementById('timeline-bpm');
+            if (!configBpmInput || !timelineBpmInput) return;
+
+            if (direction === 'from_generator') {
+                const bpmVal = parseFloat(configBpmInput.value) || 120.0;
+                timelineBpmInput.value = bpmVal;
+            } else if (direction === 'from_aligner') {
+                const bpmVal = parseFloat(timelineBpmInput.value) || 120.0;
+                configBpmInput.value = bpmVal;
+            }
+
+            if (typeof renderTimelineEditor === 'function') {
+                renderTimelineEditor();
+            }
+        }
+
+        // BPM変更・タブ切替時のイベントリスナー (通常版共通同期)
+        document.addEventListener('DOMContentLoaded', () => {
+            const configBpmInput = document.getElementById('config-bpm');
+            const timelineBpmInput = document.getElementById('timeline-bpm');
+            const tabAlignBtn = document.getElementById('tab-align-btn');
+
+            if (configBpmInput) {
+                configBpmInput.addEventListener('input', () => syncBpmToAligner('from_generator'));
+                configBpmInput.addEventListener('change', () => syncBpmToAligner('from_generator'));
+            }
+            if (timelineBpmInput) {
+                timelineBpmInput.addEventListener('input', () => syncBpmToAligner('from_aligner'));
+                timelineBpmInput.addEventListener('change', () => syncBpmToAligner('from_aligner'));
+            }
+            if (tabAlignBtn) {
+                tabAlignBtn.addEventListener('click', () => syncBpmToAligner('from_generator'));
+            }
+        });
    </script>
 
 <!-- FILTER PREVIEW MODAL -->
