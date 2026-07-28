@@ -50,6 +50,17 @@ print("==================== DEBUG: main.py V10 Free (Kinetic Animation & Multi-E
 async def chrome_devtools_json():
     return {}
 
+@app.post("/shutdown")
+async def shutdown_server():
+    import os
+    import threading
+    import time
+    def kill_server():
+        time.sleep(1) # クライアントに成功レスポンスを返す猶予を与える
+        os._exit(0)   # プロセスを完全終了
+    threading.Thread(target=kill_server, daemon=True).start()
+    return {"status": "success", "message": "SYSTEM SHUTDOWN SEQUENCE INITIATED"}
+
 class CustomMoviePyLogger(ProgressBarLogger):
     def __init__(self, update_progress_fn=None):
         super().__init__()
@@ -1553,34 +1564,61 @@ async def api_webui():
 # ==========================================
 
 def main():
+    import sys
+    import os
+    # --noconsole環境でのprintエラー（stdoutがNone）を回避する安全装置
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, 'w')
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, 'w')
+
     parser = argparse.ArgumentParser(description="Antigravity MV Generator V10 Free")
     
-    parser.add_argument("--web", action="store_true", help="Web UI繧ｵ繝ｼ繝舌繝｢繝ｼ繝峨〒襍ｷ蜍輔☆繧")
+    parser.add_argument("--web", action="store_true", help="Web UIサーバーモードで起動する")
     parser.add_argument("--port", type=int, default=8003, help="Webサーバーのポート番号")
     
-    # CLI逕ｨ
-    parser.add_argument("--audio", type=str, help="髻ｳ螢ｰ繝輔ぃ繧､繝ｫ縺ｸ縺ｮ繝代せ")
+    # CLI用
+    parser.add_argument("--audio", type=str, help="音声ファイルへのパス")
     parser.add_argument("--assets", type=str, help="背景アセットへのパス")
     parser.add_argument("--output", type=str, default="output_v2.mp4", help="出力ファイル名")
     parser.add_argument("--aspect", type=str, choices=["16:9", "9:16"], default="16:9", help="アスペクト比")
-    parser.add_argument("--fps", type=int, default=30, help="蜃ｺ蜉帛虚逕ｻ縺ｮ繝輔Ξ繝ｼ繝繝ｬ繝ｼ繝")
-    parser.add_argument("--api-key", type=str, help="Gemini API 繧ｭ繝ｼ")
-    parser.add_argument("--lyrics", type=str, help="豁瑚ｩ槭ユ繧ｭ繧ｹ繝医∪縺溘SRT縺ｸ縺ｮ繝代せ")
-    parser.add_argument("--metadata-json", type=str, help="縺吶〒縺ｫ逕滓貂医∩縺ｮ繝｡繧ｿ繝繧ｿJSON繧呈欠螳")
+    parser.add_argument("--fps", type=int, default=30, help="出力動画のフレームレート")
+    parser.add_argument("--api-key", type=str, help="Gemini API キー")
+    parser.add_argument("--lyrics", type=str, help="歌詞テキストまたはSRTへのパス")
+    parser.add_argument("--metadata-json", type=str, help="すでに生成済みのメタデータJSONを指定")
     
     args = parser.parse_args()
     
+    # 【スマート化】引数が何も指定されていない（ダブルクリック起動）場合は強制的にWebUIモードにする
+    if not args.web and not args.audio and not args.assets:
+        args.web = True
+    
     if args.web:
-        print("[WebUI] Starting A.M.V.G v2 Web Server...")
+        import socket
         import webbrowser
+        import threading
+        import time
+        import uvicorn
         
+        # 【重要】すでにサーバーがバックグラウンドで稼働しているかチェック
+        def is_port_in_use(port):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                return s.connect_ex(('127.0.0.1', port)) == 0
+                
+        # 既に稼働中の場合は、新しいサーバーを立てずにブラウザだけを開いて終了する
+        if is_port_in_use(args.port):
+            print(f"[System] ポート {args.port} は既に使用されています。既存のセッションを開きます。")
+            webbrowser.open(f"http://127.0.0.1:{args.port}")
+            sys.exit(0)
+
+        print("[WebUI] Starting A.M.V.G v2 Web Server...")
         def open_browser():
-            import time
             time.sleep(1.5)
             webbrowser.open(f"http://127.0.0.1:{args.port}")
             
         threading.Thread(target=open_browser, daemon=True).start()
-        uvicorn.run("main:app", host="127.0.0.1", port=args.port, reload=True)
+        # EXE環境でuvicornを安全に起動するため、"main:app" ではなく app オブジェクトを直接渡す
+        uvicorn.run(app, host="127.0.0.1", port=args.port)
         return
         
     print("=" * 60)
@@ -1592,7 +1630,7 @@ def main():
         print("\n[Error] --audio and --assets are required in CLI mode.")
         sys.exit(1)
         
-    # API繧ｭ繝ｼ縺ｮ蜿門ｾ怜━蜈亥ｺｦ (蠑墓焚 -> 迺ｰ蠅�､画焚)
+    # APIキーの取得優先度 (引数 -> 環境変数)
     api_key = args.api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     
     try:
@@ -1610,8 +1648,12 @@ def main():
         )
         print(f"[Success] Render complete! Output file: {args.output}")
     except Exception as e:
-        print(f"[Error] Pipeline execution failed: {e}")
+        import traceback
+        print(f"[Error] Pipeline execution failed: {e}\n{traceback.format_exc()}")
         sys.exit(1)
 
 if __name__ == "__main__":
+    # PyInstallerでのマルチプロセス実行が暴走するのを防ぐ必須コード
+    import multiprocessing
+    multiprocessing.freeze_support()
     main()
