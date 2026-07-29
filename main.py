@@ -19,7 +19,7 @@ import math
 import cv2
 import numpy as np
 from typing import List, Optional
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks, Response
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks, Response, Request
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, ImageDraw, ImageFont
@@ -95,6 +95,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def add_no_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 progress_store = {}
 TEMP_DIR = tempfile.gettempdir()
@@ -1608,13 +1616,13 @@ def main():
         # 既に稼働中の場合は、新しいサーバーを立てずにブラウザだけを開いて終了する
         if is_port_in_use(args.port):
             print(f"[System] ポート {args.port} は既に使用されています。既存のセッションを開きます。")
-            webbrowser.open(f"http://127.0.0.1:{args.port}")
+            webbrowser.open(f"http://127.0.0.1:{args.port}/?v={int(time.time())}")
             sys.exit(0)
 
         print("[WebUI] Starting A.M.V.G v2 Web Server...")
         def open_browser():
             time.sleep(1.5)
-            webbrowser.open(f"http://127.0.0.1:{args.port}")
+            webbrowser.open(f"http://127.0.0.1:{args.port}/?v={int(time.time())}")
             
         threading.Thread(target=open_browser, daemon=True).start()
         # EXE環境でuvicornを安全に起動するため、"main:app" ではなく app オブジェクトを直接渡す
