@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-A.M.V.G V10 Free - Antigravity MV Generator
-繝｡繧､繝ｳ邨ｱ蜷医お繝ｳ繝医Μ繝ｼ繝昴う繝ｳ繝 (CLI  FastAPI Web API / Web UI 繧ｵ繝ｼ繝舌)
-笘 V10 Free 譁ｰ讖溯: 讌ｽ譖ｲ繧ｨ繝阪Ν繧ｮ繝ｼ蛹ｵ｡邱 (RMS + onset_strength) 縺ｫ繧医ｋ莠碁㍾螟芽ｪｿ繧ｨ繝輔ぉ繧ｯ繝医お繝ｳ繧ｸ繝ｳ謳ｭ霈
+A.M.V.G v3 - Antigravity MV Generator
+郢晢ｽ｡郢ｧ�､郢晢ｽｳ驍ｨ�ｱ陷ｷ蛹ｻ縺顔ｹ晢ｽｳ郢晏現ﾎ懃ｹ晢ｽｼ郢晄亢縺�ｹ晢ｽｳ郢晢ｿｽ (CLI �ｽ�ｽ FastAPI Web API / Web UI 郢ｧ�ｵ郢晢ｽｼ郢晁��ｽ)
+隨假ｿｽ V3 隴�ｽｰ隶匁ｺｯ�ｽ: 隶鯉ｽｽ隴厄ｽｲ郢ｧ�ｨ郢晞亂ﾎ晉ｹｧ�ｮ郢晢ｽｼ陋ｹ�ｽ�ｵ�｡驍ｱ�ｽ (RMS + onset_strength) 邵ｺ�ｫ郢ｧ蛹ｻ�玖滋遒√裟陞溯歓�ｪ�ｿ郢ｧ�ｨ郢晁ｼ斐♂郢ｧ�ｯ郢晏現縺顔ｹ晢ｽｳ郢ｧ�ｸ郢晢ｽｳ隰ｳ�ｭ髴茨ｿｽ
 """
 
 import os
@@ -13,6 +13,8 @@ import time
 import argparse
 import tempfile
 import threading
+import socket
+import multiprocessing
 import uvicorn
 import json
 import math
@@ -20,13 +22,13 @@ import cv2
 import numpy as np
 from typing import List, Optional
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks, Response, Request
-from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, ImageDraw, ImageFont
 
 from proglog import ProgressBarLogger
 
-# 閾ｪ陬ｽ繝｢繧ｸ繝･繝ｼ繝ｫ縺ｮ繧､繝ｳ繝昴繝
+# 髢ｾ�ｪ髯ｬ�ｽ郢晢ｽ｢郢ｧ�ｸ郢晢ｽ･郢晢ｽｼ郢晢ｽｫ邵ｺ�ｮ郢ｧ�､郢晢ｽｳ郢晄亢郢�
 import loop_multiplier
 import biometric_overlay
 import pixel_melter
@@ -34,32 +36,21 @@ import metadata_generator
 
 import traceback
 
-# 最後に発生したフィルタープレビュー時のエラーログを保持するグローバル変数
+# 譛蠕後↓逋ｺ逕溘＠縺溘ヵ繧｣繝ｫ繧ｿ繝ｼ繝励Ξ繝薙Η繝ｼ譎ゅ�繧ｨ繝ｩ繝ｼ繝ｭ繧ｰ繧剃ｿ晄戟縺吶ｋ繧ｰ繝ｭ繝ｼ繝舌Ν螟画焚
 last_filter_error_log = ""
 
 
 
-app = FastAPI(title="AMVG V10 Free API")
+app = FastAPI(title="AMVG V10 Free UPG API")
 @app.get('/favicon.ico', include_in_schema=False)
 async def favicon():
     from fastapi.responses import Response
     return Response(status_code=204)
-print("==================== DEBUG: main.py V10 Free (Kinetic Animation & Multi-Exec Engine) loaded! ====================")
+print("==================== DEBUG: main.py V10 Free UPG (BPM Sync Engine) (Kinetic Animation & Multi-Exec Engine) loaded! ====================")
 
 @app.get("/.well-known/appspecific/com.chrome.devtools.json")
 async def chrome_devtools_json():
     return {}
-
-@app.post("/shutdown")
-async def shutdown_server():
-    import os
-    import threading
-    import time
-    def kill_server():
-        time.sleep(1) # クライアントに成功レスポンスを返す猶予を与える
-        os._exit(0)   # プロセスを完全終了
-    threading.Thread(target=kill_server, daemon=True).start()
-    return {"status": "success", "message": "SYSTEM SHUTDOWN SEQUENCE INITIATED"}
 
 class CustomMoviePyLogger(ProgressBarLogger):
     def __init__(self, update_progress_fn=None):
@@ -71,7 +62,7 @@ class CustomMoviePyLogger(ProgressBarLogger):
         index = changes.get("index")
         total = changes.get("total")
         
-        # もし changes に無ければ self.bars をチェック
+        # 繧ゅ＠ changes 縺ｫ辟｡縺代ｌ縺ｰ self.bars 繧偵メ繧ｧ繝�け
         if index is None or total is None:
             for bar, data in self.bars.items():
                 if isinstance(data, dict):
@@ -104,14 +95,96 @@ async def add_no_cache_headers(request: Request, call_next):
     response.headers["Expires"] = "0"
     return response
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    err_detail = traceback.format_exc()
+    print(f"\n[500 Server Exception] Error at endpoint: {request.url.path}\n{err_detail}\n")
+    return JSONResponse(
+        status_code=500,
+        content={"status": "error", "message": str(exc), "detail": err_detail}
+    )
+
 progress_store = {}
 TEMP_DIR = tempfile.gettempdir()
+
+def cleanup_old_sessions():
+    try:
+        now = time.time()
+        expired = [sid for sid, data in progress_store.items() if isinstance(data, dict) and now - data.get("timestamp", now) > 3600]
+        for sid in expired:
+            progress_store.pop(sid, None)
+            
+        # Tempディレクトリ内の過去の amvg_v2_ 一時作業用フォルダの自動開放・クリーンアップ
+        temp_dir = tempfile.gettempdir()
+        for item in os.listdir(temp_dir):
+            if item.startswith("amvg_v2_"):
+                item_path = os.path.join(temp_dir, item)
+                try:
+                    if os.path.isdir(item_path):
+                        if now - os.path.getmtime(item_path) > 1800:
+                            import shutil
+                            shutil.rmtree(item_path, ignore_errors=True)
+                    elif os.path.isfile(item_path):
+                        if now - os.path.getmtime(item_path) > 1800:
+                            os.remove(item_path)
+                except Exception:
+                    pass
+    except Exception as e:
+        print(f"[Warn] cleanup_old_sessions error: {e}")
 
 def get_resource_path(relative_path):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
 
+def get_external_data_path(filename: str) -> str:
+    if getattr(sys, 'frozen', False):
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_dir, filename)
+
+FILTERS_FILE = get_external_data_path("ai_filters.json")
+
+DEFAULT_FILTERS = {
+    "蜴溽判�医ヮ繝ｼ繧ｨ繝輔ぉ繧ｯ繝茨ｼ�": """import cv2
+import numpy as np
+
+def apply_ai_filter(frame: np.ndarray, t: float, duration: float, bpm: float, energy: float) -> np.ndarray:
+    \"\"\"
+    蜴溽判�医ヮ繝ｼ繧ｨ繝輔ぉ繧ｯ繝茨ｼ�: 蜈･蜉帙ヵ繝ｬ繝ｼ繝�繧貞刈蟾･縺帙★縺ｫ縺昴�縺ｾ縺ｾ霑泌唆縺励∪縺吶�
+    \"\"\"
+    return frame
+"""
+}
+
+def load_ai_filters() -> dict:
+    if not os.path.exists(FILTERS_FILE):
+        save_ai_filters(DEFAULT_FILTERS)
+        return DEFAULT_FILTERS.copy()
+    try:
+        with open(FILTERS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if not data:
+                save_ai_filters(DEFAULT_FILTERS)
+                return DEFAULT_FILTERS.copy()
+            return data
+    except Exception as e:
+        print(f"[Warning] Failed to load ai_filters.json: {e}")
+        return DEFAULT_FILTERS.copy()
+
+def save_ai_filters(filters: dict):
+    try:
+        with open(FILTERS_FILE, "w", encoding="utf-8") as f:
+            json.dump(filters, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        print(f"[Error] Failed to save ai_filters.json: {e}")
+
+def is_port_in_use(port: int, host: str = "127.0.0.1") -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex((host, port)) == 0
+
 def min_sec_to_seconds(val) -> float:
-    """v5完全互換の安全な時間文字列/数値パース"""
+    """v5螳悟�莠呈鋤縺ｮ螳牙�縺ｪ譎る俣譁�ｭ怜�/謨ｰ蛟､繝代�繧ｹ"""
     if val is None:
         return 0.0
     if isinstance(val, (int, float)):
@@ -128,36 +201,35 @@ def min_sec_to_seconds(val) -> float:
         return 0.0
 
 def draw_japanese_lyric(
-    frame_np: np.ndarray, 
-    text: str, 
+    frame_np: np.ndarray,
+    text: str,
     color_scheme: str = "cyan_magenta",
     style: str = "SIMPLE",
     t: float = 0.0,
     bpm: float = 120.0,
+    bpm_offset: float = 0.0,
     intensity: float = 1.0,
     start_time: float = 0.0,
     font_name: str = "gothic",
-    return_meta: bool = False,
-    bpm_offset: float = 0.0
+    return_meta: bool = False
 ):
-    """PILとOpenCVを組み合わせて、キネティックおよびグリッチ効果をかけた歌詞を描画する (v5完全準拠ロジック)"""
+    """PIL縺ｨOpenCV繧堤ｵ�∩蜷医ｏ縺帙※縲√く繝阪ユ繧｣繝�け縺翫ｈ縺ｳ繧ｰ繝ｪ繝�メ蜉ｹ譫懊ｒ縺九￠縺滓ｭ瑚ｩ槭ｒ謠冗判縺吶ｋ (v5螳悟�貅匁侠繝ｭ繧ｸ繝�け)"""
     import random
     from PIL import Image, ImageDraw, ImageFont
     h, w, c = frame_np.shape
     
-    # 1. 透明なアルファチャンネルを持つ画像を作成
+    # 1. 騾乗�縺ｪ繧｢繝ｫ繝輔ぃ繝√Ε繝ｳ繝阪Ν繧呈戟縺､逕ｻ蜒上ｒ菴懈�
     text_img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(text_img)
     
-    # 2. キネティックサイズ計算 (BPM・オフセット完全同期 Beat Pumping - 通常版高精度ロジック)
+    # 2. 繧ｭ繝阪ユ繧｣繝�け繧ｵ繧､繧ｺ險育ｮ� (讌ｽ譖ｲ縺ｮ邨ｶ蟇ｾ繝薙�繝医♀繧医� BPM Offset 縺ｫ 100% 螳悟�蜷梧悄)
     beat_duration = 60.0 / max(1.0, bpm)
-    time_since_beat = (t - bpm_offset) % beat_duration
-    if time_since_beat < 0:
-        time_since_beat += beat_duration
+    t_global = max(0.0, t - bpm_offset)
+    time_since_beat = t_global % beat_duration
     decay_constant = 6.0 / beat_duration
     beat_signal = math.exp(-decay_constant * time_since_beat)
     
-    # 基本フォントサイズ (画面の高さにスケール)
+    # 蝓ｺ譛ｬ繝輔か繝ｳ繝医し繧､繧ｺ (逕ｻ髱｢縺ｮ鬮倥＆縺ｫ繧ｹ繧ｱ繝ｼ繝ｫ)
     base_size = int(35 * (h / 720.0))
     scale = 1.0 + 0.25 * beat_signal * max(0.2, intensity) if style == "KINETIC_BOUNCE" else 1.0
     font_size = int(base_size * scale)
@@ -177,13 +249,13 @@ def draw_japanese_lyric(
         
     for fpath in font_candidates:
         try:
-            # OS標準のフォントパスをPILに自動探索させる
+            # OS讓呎ｺ悶�繝輔か繝ｳ繝医ヱ繧ｹ繧単IL縺ｫ閾ｪ蜍墓爾邏｢縺輔○繧�
             font = ImageFont.truetype(fpath, font_size)
             print(f"[Subtitle Font Engine] Loaded font: '{fpath}' ({font.getname()}) for mode: '{font_name}'")
             break
         except (IOError, OSError):
             try:
-                # Windows用の絶対パスフォールバック
+                # Windows逕ｨ縺ｮ邨ｶ蟇ｾ繝代せ繝輔か繝ｼ繝ｫ繝舌ャ繧ｯ
                 full_font_path = os.path.join("C:\\Windows\\Fonts", fpath)
                 font = ImageFont.truetype(full_font_path, font_size)
                 print(f"[Subtitle Font Engine] Loaded font from Windows path: '{full_font_path}' ({font.getname()}) for mode: '{font_name}'")
@@ -202,13 +274,13 @@ def draw_japanese_lyric(
     except AttributeError:
         text_w, text_h = draw.textsize(text, font=font)
         
-    # 中央下部配置
+    # 荳ｭ螟ｮ荳矩Κ驟咲ｽｮ
     tx = (w - text_w) // 2
     ty = int(h * 0.84) - (text_h // 2)
     
-    # 配色選択 (v5完全再現)
-    main_color = (0, 243, 255, 255)  # シアン
-    glow_color = (255, 0, 127, 255)  # マゼンタ
+    # 驟崎牡驕ｸ謚� (v5螳悟�蜀咲樟)
+    main_color = (0, 243, 255, 255)  # 繧ｷ繧｢繝ｳ
+    glow_color = (255, 0, 127, 255)  # 繝槭ぞ繝ｳ繧ｿ
     
     if color_scheme == "green_cyan":
         main_color = (57, 255, 20, 255)
@@ -223,7 +295,7 @@ def draw_japanese_lyric(
         main_color = (255, 255, 255, 255)
         glow_color = (0, 243, 255, 255)
 
-    # ネオン光彩の描画 (NEON_GLOW)
+    # 繝阪が繝ｳ蜈牙ｽｩ縺ｮ謠冗判 (NEON_GLOW)
     if style == "NEON_GLOW":
         glow_size = int(font_size * 1.08)
         glow_font = None
@@ -252,23 +324,23 @@ def draw_japanese_lyric(
         for offset in [(-2, -2), (2, -2), (-2, 2), (2, 2), (0, 0)]:
             draw.text((gtx + offset[0], gty + offset[1]), text, font=glow_font, fill=(glow_color[0], glow_color[1], glow_color[2], 100))
 
-    # 通常のアウトライン（黒縁取り）の描画
+    # 騾壼ｸｸ縺ｮ繧｢繧ｦ繝医Λ繧､繝ｳ�磯ｻ堤ｸ∝叙繧奇ｼ峨�謠冗判
     outline_color = (0, 0, 0, 255)
     for offset in [(-2, -2), (2, -2), (-2, 2), (2, 2), (-2, 0), (2, 0), (0, -2), (0, 2)]:
         draw.text((tx + offset[0], ty + offset[1]), text, font=font, fill=outline_color)
         
-    # メインの文字を描画
+    # 繝｡繧､繝ｳ縺ｮ譁�ｭ励ｒ謠冗判
     draw.text((tx, ty), text, font=font, fill=main_color)
     
-    # NumPyのRGBA配列に変換
+    # NumPy縺ｮRGBA驟榊�縺ｫ螟画鋤
     text_np = np.array(text_img)
     text_pixel_count = int(np.count_nonzero(text_np[:, :, 3] > 10))
     
-    # 3. グリッチ/色収差 (GLITCH or CHROME_RGB スタイルの場合)
+    # 3. 繧ｰ繝ｪ繝�メ/濶ｲ蜿主ｷｮ (GLITCH or CHROME_RGB 繧ｹ繧ｿ繧､繝ｫ縺ｮ蝣ｴ蜷�)
     if style in ["GLITCH", "CHROME_RGB"] and intensity > 0.05:
         glitch_trigger = math.sin(t * 12.0) * beat_signal
         
-        # チャンネルスプリットによる色収差
+        # 繝√Ε繝ｳ繝阪Ν繧ｹ繝励Μ繝�ヨ縺ｫ繧医ｋ濶ｲ蜿主ｷｮ
         if glitch_trigger > 0.25 or (random.random() < 0.15 * intensity):
             shift = int(20.0 * intensity * (glitch_trigger if glitch_trigger > 0 else 0.4))
             shift = max(1, shift)
@@ -292,7 +364,7 @@ def draw_japanese_lyric(
             text_np[:, :, 2] = new_b
             text_np[:, :, 3] = new_a
             
-        # 横ラインスライス歪み (GLITCH スタイルのみ)
+        # 讓ｪ繝ｩ繧､繝ｳ繧ｹ繝ｩ繧､繧ｹ豁ｪ縺ｿ (GLITCH 繧ｹ繧ｿ繧､繝ｫ縺ｮ縺ｿ)
         if style == "GLITCH" and (glitch_trigger > 0.45 or random.random() < 0.1 * intensity):
             num_slices = random.randint(3, 7)
             for _ in range(num_slices):
@@ -303,7 +375,7 @@ def draw_japanese_lyric(
                 slice_y = max(0, min(h - slice_h, slice_y))
                 text_np[slice_y:slice_y+slice_h] = np.roll(text_np[slice_y:slice_y+slice_h], slice_shift, axis=1)
 
-    # 4. 元画像とのブレンド (v5直接ブレンド)
+    # 4. 蜈�判蜒上→縺ｮ繝悶Ξ繝ｳ繝� (v5逶ｴ謗･繝悶Ξ繝ｳ繝�)
     alpha = text_np[:, :, 3:4] / 255.0
     text_rgb = text_np[:, :, 0:3]
     blended = (1.0 - alpha) * frame_np + alpha * text_rgb
@@ -315,7 +387,7 @@ def draw_japanese_lyric(
 
 
 # ==========================================
-# 邨ｱ蜷医ヱ繧､繝励Λ繧､繝ｳ螳溯｡後さ繧｢
+# 驍ｨ�ｱ陷ｷ蛹ｻ繝ｱ郢ｧ�､郢晏干ﾎ帷ｹｧ�､郢晢ｽｳ陞ｳ貅ｯ�｡蠕後＆郢ｧ�｢
 # ==========================================
 
 def run_pipeline(
@@ -345,7 +417,8 @@ def run_pipeline(
     enable_ai_orchestration: bool = False,
     enable_kinetic_lyric: bool = False,
     lyric_effect_style: str = "SIMPLE",
-    subtitle_font: str = "gothic"
+    subtitle_font: str = "gothic",
+    video_encoder: str = "libx264"
 ):
     try:
         def update_progress(val: int, msg: str):
@@ -355,7 +428,7 @@ def run_pipeline(
             else:
                 print(f"[{val}%] {msg}")
 
-        # 1. タイムライン構築
+        # 1. 繧ｿ繧､繝�繝ｩ繧､繝ｳ讒狗ｯ�
         update_progress(5, "Phase 1: Generating base track using loop multiplier...")
         
         resolution = (720, 1280) if aspect_ratio == "9:16" else (1280, 720)
@@ -372,7 +445,7 @@ def run_pipeline(
         )
         total_duration = base_clip.duration
         
-        # 2. 字幕データのパース（タイムライン連携対応）
+        # 2. 蟄怜ｹ輔ョ繝ｼ繧ｿ縺ｮ繝代�繧ｹ�医ち繧､繝�繝ｩ繧､繝ｳ騾｣謳ｺ蟇ｾ蠢懶ｼ�
         sections = []
         if metadata_json_path and os.path.exists(metadata_json_path):
             update_progress(15, "Loading metadata from existing JSON...")
@@ -390,7 +463,7 @@ def run_pipeline(
             ext = os.path.splitext(lyrics_path)[1].lower()
             sections = []
             
-            # SRTファイルまたはSRT形式のテキストの場合
+            # SRT繝輔ぃ繧､繝ｫ縺ｾ縺溘�SRT蠖｢蠑上�繝�く繧ｹ繝医�蝣ｴ蜷�
             if ext == '.srt' or "-->" in lyrics_content:
                 parsed, _ = metadata_generator.parse_srt(lyrics_content)
                 for p in parsed:
@@ -402,7 +475,7 @@ def run_pipeline(
                         "lyric": p["text"]
                     })
             else:
-                # TXTファイル（プレーンテキスト）の場合: 曲の長さに応じて均等自動配分
+                # TXT繝輔ぃ繧､繝ｫ�医�繝ｬ繝ｼ繝ｳ繝�く繧ｹ繝茨ｼ峨�蝣ｴ蜷�: 譖ｲ縺ｮ髟ｷ縺輔↓蠢懊§縺ｦ蝮�ｭ芽�蜍暮�蛻�
                 parsed, _ = metadata_generator.parse_txt_to_lines(lyrics_content, total_duration)
                 for p in parsed:
                     if p.get("is_marker") or metadata_generator.is_section_marker(p["text"]) or not p["text"].strip():
@@ -417,7 +490,7 @@ def run_pipeline(
         else:
             update_progress(35, "No lyrics provided. Running in offline rendering mode...")
             
-        # --- 字幕セクションの完全自動正規化 & キャッシュ ---
+        # --- 蟄怜ｹ輔そ繧ｯ繧ｷ繝ｧ繝ｳ縺ｮ螳悟�閾ｪ蜍墓ｭ｣隕丞喧 & 繧ｭ繝｣繝�す繝･ ---
         normalized_sections = []
         for idx, sec in enumerate(sections):
             st = sec.get("start_sec") if sec.get("start_sec") is not None else (sec.get("start") or sec.get("time_start"))
@@ -432,7 +505,7 @@ def run_pipeline(
             end_sec = min_sec_to_seconds(et)
             
             if end_sec <= start_sec or (end_sec - start_sec) < 0.1:
-                end_sec = start_sec + 0.5  # 最低描画持続時間保証
+                end_sec = start_sec + 0.5  # 譛菴取緒逕ｻ謖∫ｶ壽凾髢謎ｿ晁ｨｼ
                 
             normalized_sections.append({
                 "id": idx + 1,
@@ -449,16 +522,14 @@ def run_pipeline(
 
         update_progress(40, f"Base clip generated ({total_duration:.2f}s). Applying effects...")
 
-        # 3. AIによるエフェクト自動連携（オーケストレーション）のタイムライン解析
+        # 3. AI縺ｫ繧医ｋ繧ｨ繝輔ぉ繧ｯ繝郁�蜍暮｣謳ｺ�医が繝ｼ繧ｱ繧ｹ繝医Ξ繝ｼ繧ｷ繝ｧ繝ｳ�峨�繧ｿ繧､繝�繝ｩ繧､繝ｳ隗｣譫�
         orchestration_plan = None
         if enable_ai_orchestration:
             update_progress(42, "V5 Phase 1.5: Analyzing audio progress via Gemini for orchestration timeline...")
             try:
                 available_filters = ["none"]
-                if os.path.exists("ai_filters.json"):
-                    with open("ai_filters.json", "r", encoding="utf-8") as f:
-                        filters_data = json.load(f)
-                        available_filters.extend(list(filters_data.keys()))
+                filters_data = load_ai_filters()
+                available_filters.extend(list(filters_data.keys()))
                 
                 lyrics_text = ""
                 if lyrics_path and os.path.exists(lyrics_path):
@@ -478,8 +549,8 @@ def run_pipeline(
                 print(f"[V5 Orchestration Warning] Gemini timeline orchestration failed, using fallback timeline: {e_orch}")
                 orchestration_plan = metadata_generator.generate_fallback_timeline(total_duration, bpm, available_filters)
 
-        # 3b. Librosa 音声エネルギー解析 (Fallback)
-        # 3b. 音声エネルギー解析 (Librosaを使わない安全な実装)
+        # 3b. Librosa 髻ｳ螢ｰ繧ｨ繝阪Ν繧ｮ繝ｼ隗｣譫� (Fallback)
+        # 3b. 髻ｳ螢ｰ繧ｨ繝阪Ν繧ｮ繝ｼ隗｣譫� (Librosa繧剃ｽｿ繧上↑縺�ｮ牙�縺ｪ螳溯｣�)
         update_progress(44, "V3 Phase 2a: Analyzing audio energy envelope...")
         
         rms_norm = np.array([0.5])
@@ -546,10 +617,10 @@ def run_pipeline(
             except Exception as e_compile:
                 print(f"[V5 Error] Failed to compile AI Filter code: {e_compile}")
 
-        # 3c. 動的変調フレームエフェクトフィルターの実装
+        # 3c. 蜍慕噪螟芽ｪｿ繝輔Ξ繝ｼ繝�繧ｨ繝輔ぉ繧ｯ繝医ヵ繧｣繝ｫ繧ｿ繝ｼ縺ｮ螳溯｣�
         update_progress(50, "V5 Phase 2b: Attaching biometric overlay & energy-reactive pixel melter with kinetic animation...")
         
-        # 音声特徴からその時刻のエネルギーを取得する関数
+        # 髻ｳ螢ｰ迚ｹ蠕ｴ縺九ｉ縺昴�譎ょ綾縺ｮ繧ｨ繝阪Ν繧ｮ繝ｼ繧貞叙蠕励☆繧矩未謨ｰ
         def get_energy_at(t_val):
             idx = int(t_val / hop_seconds_energy)
             if idx < len(rms_norm):
@@ -562,7 +633,7 @@ def run_pipeline(
             raw_frame_copy = get_frame(t).copy()
             frame = raw_frame_copy.copy()
             
-            # 現在時刻 t の演出セクション（オーケストレーション）探索
+            # 迴ｾ蝨ｨ譎ょ綾 t 縺ｮ貍泌�繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ�医が繝ｼ繧ｱ繧ｹ繝医Ξ繝ｼ繧ｷ繝ｧ繝ｳ�画爾邏｢
             active_sec = None
             if orchestration_plan:
                 for sec in orchestration_plan.get("sections", []):
@@ -570,6 +641,7 @@ def run_pipeline(
                         active_sec = sec
                         break
             
+            # 蜷�ｼｷ蠎ｦ縺ｮ繝�ヵ繧ｩ繝ｫ繝亥､縺ｨ繧ｹ繧ｿ繧､繝ｫ險ｭ螳�
             current_melt_int = 1.0
             current_glitch_int = 1.0
             current_biometric_opacity = 1.0
@@ -582,27 +654,19 @@ def run_pipeline(
                 current_biometric_opacity = active_sec.get("biometric_opacity", 1.0)
                 current_lyric_style = active_sec.get("lyric_effect_style", current_lyric_style)
                 
-                if enable_ai_orchestration:
-                    filter_name = active_sec.get("active_filter", "none")
-                    if filter_name != "none":
-                        if os.path.exists("ai_filters.json"):
-                            try:
-                                with open("ai_filters.json", "r", encoding="utf-8") as f_json:
-                                    filters_data = json.load(f_json)
-                                    if filter_name in filters_data:
-                                        current_filter_code = filters_data[filter_name]
-                            except Exception:
-                                pass
+                filter_name = active_sec.get("active_filter", "none")
+                if filter_name != "none":
+                    filters_data = load_ai_filters()
+                    if filter_name in filters_data:
+                        current_filter_code = filters_data[filter_name]
 
             energy = get_energy_at(t)
             beat_interval = 60.0 / max(1.0, bpm)
             time_since_beat = (t - bpm_offset) % beat_interval
-            if time_since_beat < 0:
-                time_since_beat += beat_interval
             decay = 12.0
             beat_signal = math.exp(-decay * time_since_beat)
             
-            # 生体データのノイズ上書き描画 (BPM同期)
+            # 逕滉ｽ薙ョ繝ｼ繧ｿ縺ｮ繝弱う繧ｺ荳頑嶌縺肴緒逕ｻ (BPM蜷梧悄)
             overlay_frame = biometric_overlay.apply_biometric_overlay(
                 frame_np=frame.copy(),
                 t=t,
@@ -615,38 +679,38 @@ def run_pipeline(
                 bpm_offset=bpm_offset
             )
 
+            # 逕滉ｽ薙が繝ｼ繝舌�繝ｬ繧､(BIOMETRIC OVERLAY)繧偵ヵ繝ｬ繝ｼ繝�縺ｫ蜿肴丐
             if enable_ecg or enable_grf or enable_hexdump:
                 if current_biometric_opacity >= 0.99:
                     frame = overlay_frame
                 elif current_biometric_opacity > 0:
                     frame = cv2.addWeighted(overlay_frame, current_biometric_opacity, frame, 1.0 - current_biometric_opacity, 0)
             
-            # 【Antigravity Phase 2: 静止画の生体駆動化 (BPM完全同期 空間歪曲 / Smooth Beat Pumping)】
-            zoom_amp = 0.02 + 0.04 * energy
+            # 縲植ntigravity Phase 2: 髱呎ｭ｢逕ｻ縺ｮ逕滉ｽ馴ｧ�虚蛹� (Kinetic Animation / 遨ｺ髢捺ｭｪ譖ｲ)縲�
+            zoom_amp = 0.03 + 0.05 * energy
             zoom_scale = 1.0 + zoom_amp * beat_signal
+            twitch_amp = 2.0 + 12.0 * energy * beat_signal
+            wiggle_x = math.sin(t * 14.3) * twitch_amp + (np.random.rand() - 0.5) * 4.0 * energy
+            wiggle_y = math.cos(t * 11.7) * twitch_amp + (np.random.rand() - 0.5) * 4.0 * energy
 
-            # BPMに完全同期したビート位相 (拍数)
-            beats_elapsed = (t - bpm_offset) * (bpm / 60.0)
-            shake_phase = beats_elapsed * 2.0 * math.pi
-
-            twitch_amp = 1.5 + 8.0 * energy * beat_signal
-            wiggle_x = math.sin(shake_phase) * twitch_amp
-            wiggle_y = math.sin(shake_phase * 0.5) * twitch_amp
-
+            # 繧｢繝輔ぅ繝ｳ螟画鋤陦悟�縺ｮ菴懈��医ン繝ｼ繝郁ц蜍輔�莨ｸ邵ｮ繝ｻ謠ｺ繧鯉ｼ�
             h_img, w_img = frame.shape[:2]
             center = (w_img / 2.0, h_img / 2.0)
             M = cv2.getRotationMatrix2D(center, 0, zoom_scale)
             M[0, 2] += wiggle_x
             M[1, 2] += wiggle_y
 
+            # 繝ｪ繧ｺ繝�縺ｫ蠢懊§縺溘ヵ繝ｬ繝ｼ繝�螟牙ｽ｢ (BORDER_REFLECT_101)
             frame = cv2.warpAffine(frame, M, (w_img, h_img), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT_101)
 
             base_floor = 0.05 + 0.30 * energy
             modulated_signal = base_floor + (1.0 - base_floor) * beat_signal * energy
 
+            # AI繧ｪ繝ｼ繧ｱ繧ｹ繝医Ξ繝ｼ繧ｷ繝ｧ繝ｳ縺ｾ縺溘�繝�ヵ繧ｩ繝ｫ繝医�繝代Λ繝｡繝ｼ繧ｿ縺ｧ螟芽ｪｿ
             dynamic_max_melt = max_melt * modulated_signal * current_melt_int
             dynamic_glitch_freq = glitch_freq * modulated_signal * current_glitch_int
 
+            # single 繝｢繝ｼ繝画凾縺ｯ莉悶�繝吶�繧ｹ繧ｰ繝ｪ繝�メ貅ｶ蜃ｺ縺ｮ驥崎､�ｹｲ貂峨ｒ繧ｯ繝ｪ繧｢縺ｫ縺励∫ｴ皮ｲ九↑ AI Filter 蜊倡匱縺ｮ縺ｿ繧帝←逕ｨ
             if filter_exec_mode == "single":
                 dynamic_max_melt = 0.0
                 dynamic_glitch_freq = 0.0
@@ -659,15 +723,13 @@ def run_pipeline(
                 glitch_freq=dynamic_glitch_freq
             )
             
-            # 複数フィルターのパイプライン実行 (マルチセレクト対応)
+            # 隍�焚繝輔ぅ繝ｫ繧ｿ繝ｼ縺ｮ繝代う繝励Λ繧､繝ｳ螳溯｡� (繝槭Ν繝√そ繝ｬ繧ｯ繝亥ｯｾ蠢�)
             filter_list = []
-            has_explicit_filter_config = False
-            if ai_filter_codes_json is not None:
+            if ai_filter_codes_json:
                 try:
                     import json
                     parsed = json.loads(ai_filter_codes_json)
                     if isinstance(parsed, list):
-                        has_explicit_filter_config = True
                         filter_list = [c for c in parsed if isinstance(c, str) and c.strip()]
                 except Exception:
                     pass
@@ -677,9 +739,11 @@ def run_pipeline(
                 if effective_code:
                     filter_list = [effective_code]
 
+            # 蜊倡匱繝｢繝ｼ繝�1(single1), 蜊倡匱繝｢繝ｼ繝�2(single2), 隍�粋繝｢繝ｼ繝�(multi) 縺ｮ驕ｩ逕ｨ繝ｭ繧ｸ繝�け
             active_filters_to_run = filter_list
 
             if filter_exec_mode == "single1" or filter_exec_mode == "single":
+                # 蜊倡匱繝｢繝ｼ繝�1: 驥阪�蜷医ｏ縺帙�荳蛻�○縺壹�∈謚槭＆繧後◆繝輔ぅ繝ｫ繧ｿ繝ｼ縺ｮ荳ｭ縺九ｉ蟆冗ｯ蜻ｨ譛溘�譖ｲ隱ｿ(Energy)縺ｫ蠢懊§縺ｦ驕ｩ螳�1縺､縺�縺代ｒ蜊倡匱驕ｩ逕ｨ
                 if len(filter_list) > 0:
                     beats_per_bar = 4.0
                     measures = max(1, slide_measures)
@@ -692,6 +756,7 @@ def run_pipeline(
                 else:
                     active_filters_to_run = []
             elif filter_exec_mode == "single2":
+                # 蜊倡匱繝｢繝ｼ繝�2: 險ｭ螳壹＆繧後◆BPM縺ｫ蟇ｾ縺吶ｋ險ｭ螳壼ｰ冗ｯ譎る俣(SLIDES CHANGEOVER RATE)縺ｴ縺｣縺溘ｊ縺ｧ鬆�ｬ｡1縺､縺壹▽蜊倡匱蛻�ｊ譖ｿ縺�
                 if len(filter_list) > 0:
                     beats_per_bar = 4.0
                     measures = max(1, slide_measures)
@@ -703,9 +768,11 @@ def run_pipeline(
                 else:
                     active_filters_to_run = []
             else:
+                # 隍�粋繝｢繝ｼ繝�: 驕ｸ謚槭＆繧後◆蜈ｨ縺ｦ縺ｮ繝輔ぅ繝ｫ繧ｿ繝ｼ繧帝㍾縺ｭ蜷医ｏ縺�(繧ｹ繧ｿ繝�け)驕ｩ逕ｨ
                 active_filters_to_run = filter_list
 
             for code_item in active_filters_to_run:
+                # 譏守､ｺ逧�↑繝繝溘�繧ｳ繝ｼ繝峨′豺ｷ蜈･縺励◆蝣ｴ蜷医�繝輔ぉ繧､繝ｫ繧ｻ繝ｼ繝�
                 if code_item == "# PASS_THROUGH_NO_FILTER":
                     continue
                 try:
@@ -756,7 +823,7 @@ def run_pipeline(
             
             return frame
 
-        # Phase 2-A: AIフィルター＆ビジュアルエフェクト処理 (背景・エフェクトレイヤー)
+        # Phase 2-A: AI繝輔ぅ繝ｫ繧ｿ繝ｼ��ン繧ｸ繝･繧｢繝ｫ繧ｨ繝輔ぉ繧ｯ繝亥�逅� (閭梧勹繝ｻ繧ｨ繝輔ぉ繧ｯ繝医Ξ繧､繝､繝ｼ)
         effects_clip = base_clip.transform(frame_effect_filter)
         
                                 # Phase 2-B: MoviePy 100% Universal Guaranteed Subtitle Top Layer
@@ -792,11 +859,11 @@ def run_pipeline(
                     style=current_lyric_style,
                     t=t_val,
                     bpm=bpm,
+                    bpm_offset=bpm_offset,
                     intensity=current_glitch_int,
                     start_time=sec_start_sec,
                     font_name=subtitle_font,
-                    return_meta=True,
-                    bpm_offset=bpm_offset
+                    return_meta=True
                 )
                 
                 if sec_id not in verified_subtitles_logged:
@@ -813,32 +880,51 @@ def run_pipeline(
         except Exception:
             final_clip = effects_clip
         
-        # 4. 音声の結合と出力
+        # 4. 鬮ｻ�ｳ陞｢�ｰ邵ｺ�ｮ驍ｨ莉咏ｲ狗ｸｺ�ｨ陷�ｽｺ陷会ｿｽ
         update_progress(70, "Phase 3: Attaching audio and exporting final H.264 video...")
         
         from moviepy import AudioFileClip
         audio_clip = AudioFileClip(audio_path)
         final_clip = final_clip.with_audio(audio_clip)
-
-        # レンダリング実行 (CustomMoviePyLogger でリアルタイム進捗をキャッチ)
-        custom_logger = CustomMoviePyLogger(update_progress_fn=update_progress)
-        final_clip.write_videofile(
-            output_path,
-            fps=fps,
-            codec="libx264",
-            audio_codec="aac",
-            ffmpeg_params=["-pix_fmt", "yuv420p"],
-            logger=custom_logger
-        )
         
-        # 終了処理
+        # 繝ｬ繝ｳ繝繝ｪ繝ｳ繧ｰ螳溯｡� (CustomMoviePyLogger 縺ｧ繝ｪ繧｢繝ｫ繧ｿ繧､繝�騾ｲ謐励ｒ繧ｭ繝｣繝�メ)
+        custom_logger = CustomMoviePyLogger(update_progress_fn=update_progress)
+        target_codec = video_encoder if video_encoder else "libx264"
+        print(f"[Export] Starting video export with encoder: '{target_codec}' (FPS={fps})...")
+
+        try:
+            final_clip.write_videofile(
+                output_path,
+                fps=fps,
+                codec=target_codec,
+                audio_codec="aac",
+                ffmpeg_params=["-pix_fmt", "yuv420p"],
+                logger=custom_logger
+            )
+        except Exception as export_err:
+            if target_codec != "libx264":
+                print(f"[Export Warning] Hardware encoder '{target_codec}' failed ({export_err}). Falling back to CPU encoder 'libx264'...")
+                update_progress(75, f"GPU encoder ({target_codec}) unavailable. Falling back to CPU (libx264)...")
+                final_clip.write_videofile(
+                    output_path,
+                    fps=fps,
+                    codec="libx264",
+                    audio_codec="aac",
+                    ffmpeg_params=["-pix_fmt", "yuv420p"],
+                    logger=custom_logger
+                )
+            else:
+                raise export_err
+        
+        # 邨ゆｺ��逅�
         final_clip.close()
         base_clip.close()
         audio_clip.close()
         
         update_progress(100, "Rendering finished successfully!")
-        if is_async:
+        if is_async and session_id in progress_store:
             progress_store[session_id]["status"] = "completed"
+            progress_store[session_id]["output_path"] = output_path
             
     except Exception as e:
         import traceback
@@ -847,7 +933,7 @@ def run_pipeline(
         print(f"[Error] Pipeline failure: {err}")
         sys.stdout.flush()
         if is_async and session_id in progress_store:
-            # 簡潔にスタックトレースの最後の3行を取得してメッセージに含める
+            # 邁｡貎斐↓繧ｹ繧ｿ繝�け繝医Ξ繝ｼ繧ｹ縺ｮ譛蠕後�3陦後ｒ蜿門ｾ励＠縺ｦ繝｡繝�そ繝ｼ繧ｸ縺ｫ蜷ｫ繧√ｋ
             err_lines = [line.strip() for line in err.splitlines() if line.strip()]
             err_summary = " -> ".join(err_lines[-3:]) if len(err_lines) >= 3 else err
             progress_store[session_id]["status"] = "failed"
@@ -867,7 +953,7 @@ def parse_time_str_to_float(time_str: str) -> float:
             m = int(parts[0])
             s_parts = parts[1].split('.')
             s = int(s_parts[0])
-            # mm:ss.hh 蠖｢蠑上�蝣ｴ蜷� hh (1/100遘�) 縺ｪ縺ｮ縺ｧ100縺ｧ蜑ｲ繧�
+            # mm:ss.hh 陟厄ｽ｢陟台ｸ奇ｿｽ陜｣�ｴ陷ｷ�ｽ hh (1/100驕假ｿｽ) 邵ｺ�ｪ邵ｺ�ｮ邵ｺ�ｧ100邵ｺ�ｧ陷托ｽｲ郢ｧ�ｽ
             ms = int(s_parts[1]) if len(s_parts) > 1 else 0
             return m * 60 + s + (ms / 100.0)
         elif len(parts) == 3: # HH:MM:SS,ms
@@ -893,10 +979,10 @@ async def api_align_lyrics(
     effective_api_key = None
     key_source = "None"
     try:
-        # 遨ｺ譁�ｭ励�蝣ｴ蜷医�讓呎ｺ門喧
+        # 驕ｨ�ｺ隴�ｿｽ�ｭ蜉ｱ�ｽ陜｣�ｴ陷ｷ蛹ｻ�ｽ隶灘綜�ｺ髢蝟ｧ
         api_key_clean = api_key.strip() if api_key else None
         
-        # 繧ゅ＠蜈･蜉帙＆繧後◆繧ｭ繝ｼ縺檎┌蜉ｹ縺ｪ蠖｢蠑擾ｼ�IzaSy縺ｧ蟋九∪繧峨↑縺�ｼ峨〒縺ゅｌ縺ｰ縲∫┌隕悶＠縺ｦ迺ｰ蠅�､画焚繝輔か繝ｼ繝ｫ繝舌ャ繧ｯ繧堤匱蜍�
+        # 郢ｧ繧�ｼ�陷茨ｽ･陷牙ｸ呻ｼ�ｹｧ蠕娯螺郢ｧ�ｭ郢晢ｽｼ邵ｺ讙寂伯陷会ｽｹ邵ｺ�ｪ陟厄ｽ｢陟第得�ｼ�ｽIzaSy邵ｺ�ｧ陝倶ｹ昶穐郢ｧ蟲ｨ竊醍ｸｺ�ｽ�ｼ蟲ｨ縲堤ｸｺ繧�ｽ檎ｸｺ�ｰ邵ｲ竏ｫ笏碁囎謔ｶ��邵ｺ�ｦ霑ｺ�ｰ陟�ｿｽ�､逕ｻ辟夂ｹ晁ｼ斐°郢晢ｽｼ郢晢ｽｫ郢晁�繝｣郢ｧ�ｯ郢ｧ蝣､蛹ｱ陷搾ｿｽ
         if api_key_clean and not api_key_clean.startswith("AIzaSy"):
             print(f"[Warning] Provided API key does not start with 'AIzaSy'. Ignoring Web UI Input: {api_key_clean[:8]}...")
             api_key_clean = None
@@ -997,16 +1083,33 @@ Key Guidance:
 6. Make sure the output frame has the exact same dimensions and dtype as the input frame.
 """
 
-        model = genai.GenerativeModel(
-            model_name=primary_model or "gemini-3.5-flash",
-            system_instruction=system_instruction
-        )
-        
         prompt_text = f"User Request: {prompt}\n"
         if current_code:
             prompt_text += f"\nModify or Refine the following existing code:\n```python\n{current_code}\n```"
-            
-        response = model.generate_content(prompt_text)
+
+        model_candidates = [primary_model, "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+        response = None
+        last_exception = None
+
+        for m_name in model_candidates:
+            if not m_name:
+                continue
+            try:
+                model = genai.GenerativeModel(
+                    model_name=m_name,
+                    system_instruction=system_instruction
+                )
+                response = model.generate_content(prompt_text)
+                if response and response.text:
+                    print(f"[Success] Python AI Filter generated with model: {m_name}")
+                    break
+            except Exception as candidate_err:
+                print(f"[Warn] Model '{m_name}' failed for filter generation: {candidate_err}")
+                last_exception = candidate_err
+
+        if not response or not response.text:
+            raise last_exception or RuntimeError("All Gemini AI models failed to respond.")
+
         code = response.text.strip()
         
         if code.startswith("```python"):
@@ -1018,6 +1121,7 @@ Key Guidance:
             
         return {"status": "success", "code": code.strip()}
     except Exception as e:
+        print(f"[Error] /generate-filter-code failed: {e}")
         return {"status": "error", "error": str(e)}
 
 @app.post("/detect-bpm")
@@ -1066,26 +1170,10 @@ async def detect_bpm_endpoint(audio: UploadFile = File(...)):
         }
 
 # ==========================================
-# AI フィルター保存および自己進化 (自己増殖) API
+# AI 繝輔ぅ繝ｫ繧ｿ繝ｼ菫晏ｭ倥♀繧医�閾ｪ蟾ｱ騾ｲ蛹� (閾ｪ蟾ｱ蠅玲ｮ�) API
 # ==========================================
 
-FILTERS_FILE = get_resource_path("ai_filters.json")
 
-def load_ai_filters() -> dict:
-    if os.path.exists(FILTERS_FILE):
-        try:
-            with open(FILTERS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"[Warning] Failed to load ai_filters.json: {e}")
-    return {}
-
-def save_ai_filters(filters: dict):
-    try:
-        with open(FILTERS_FILE, "w", encoding="utf-8") as f:
-            json.dump(filters, f, ensure_ascii=False, indent=4)
-    except Exception as e:
-        print(f"[Error] Failed to save ai_filters.json: {e}")
 
 @app.post("/save-filter-code")
 async def api_save_filter_code(
@@ -1141,9 +1229,10 @@ async def api_generate(
     enable_ai_orchestration: str = Form("false"),
     enable_kinetic_lyric: str = Form("false"),
     lyric_effect_style: str = Form("SIMPLE"),
-    subtitle_font: str = Form("gothic")
+    subtitle_font: str = Form("gothic"),
+    video_encoder: str = Form("libx264")
 ):
-    # 既存セッションのクリーンアップ
+    # 譌｢蟄倥そ繝�す繝ｧ繝ｳ縺ｮ繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝��
     cleanup_old_sessions()
     
     cleaned_api_key = api_key.strip() if api_key else None
@@ -1163,13 +1252,13 @@ async def api_generate(
         "temp_dir": session_dir
     }
     
-    # 音楽ファイルの保存
+    # 髻ｳ讌ｽ繝輔ぃ繧､繝ｫ縺ｮ菫晏ｭ�
     audio_ext = os.path.splitext(audio.filename)[1] or ".mp3"
     temp_audio_path = os.path.join(session_dir, f"input_audio{audio_ext}")
     with open(temp_audio_path, "wb") as f:
         shutil.copyfileobj(audio.file, f)
         
-    # 歌詞ファイルの保存
+    # 豁瑚ｩ槭ヵ繧｡繧､繝ｫ縺ｮ菫晏ｭ�
     temp_lyrics_path = None
     if edited_srt:
         temp_lyrics_path = os.path.join(session_dir, "edited_lyrics.srt")
@@ -1181,7 +1270,7 @@ async def api_generate(
         with open(temp_lyrics_path, "wb") as f:
             shutil.copyfileobj(lyrics.file, f)
             
-    # 背景アセットの保存
+    # 閭梧勹繧｢繧ｻ繝�ヨ縺ｮ菫晏ｭ�
     assets_dir = os.path.join(session_dir, "assets")
     os.makedirs(assets_dir, exist_ok=True)
     
@@ -1230,10 +1319,33 @@ async def api_generate(
         enable_ai_orchestration=(enable_ai_orchestration.lower() == 'true'),
         enable_kinetic_lyric=(enable_kinetic_lyric.lower() == 'true'),
         lyric_effect_style=lyric_effect_style,
-        subtitle_font=subtitle_font
+        subtitle_font=subtitle_font,
+        video_encoder=video_encoder
     )
     
     return {"session_id": session_id}
+
+@app.get("/status/{session_id}")
+async def api_get_status(session_id: str):
+    if session_id in progress_store:
+        return progress_store[session_id]
+    return {"status": "not_found", "progress": 0, "message": "Session not found"}
+
+@app.get("/download/{session_id}")
+async def api_download_result(session_id: str):
+    # 1. progress_store からの探索
+    if session_id in progress_store and "output_path" in progress_store[session_id]:
+        output_path = progress_store[session_id]["output_path"]
+        if os.path.exists(output_path):
+            return FileResponse(output_path, media_type="video/mp4", filename=os.path.basename(output_path))
+    
+    # 2. 一時ディレクトリ構造からの直接安全探索
+    temp_dir = tempfile.gettempdir()
+    candidate_path = os.path.join(temp_dir, f"amvg_v2_{session_id}", f"output_v2_{session_id}.mp4")
+    if os.path.exists(candidate_path):
+        return FileResponse(candidate_path, media_type="video/mp4", filename=f"AMVG_render_{session_id[:8]}.mp4")
+        
+    raise HTTPException(status_code=404, detail="File not found")
 
 @app.post("/preview_filter")
 async def api_preview_filter(
@@ -1260,7 +1372,7 @@ async def api_preview_filter(
                     frame = cv2.resize(frame, (640, int(fh * scale)))
 
         if frame is None:
-            # デフォルトのテスト用フレーム生成 (720x1280, BGR)
+            # 繝�ヵ繧ｩ繝ｫ繝医�繝�せ繝育畑繝輔Ξ繝ｼ繝�逕滓� (720x1280, BGR)
             h, w = 720, 1280
             frame = np.zeros((h, w, 3), dtype=np.uint8)
             for y in range(h):
@@ -1269,7 +1381,7 @@ async def api_preview_filter(
                 b = int(40 + 90 * (y / h))
                 frame[y, :] = (b, g, r)
             
-            # グリッド描画
+            # 繧ｰ繝ｪ繝�ラ謠冗判
             for x in range(0, w, 80):
                 cv2.line(frame, (x, 0), (x, h), (40, 60, 80), 1)
             for y in range(0, h, 80):
@@ -1279,7 +1391,7 @@ async def api_preview_filter(
             cv2.putText(frame, f"STATE: t={t:.2f}s | BPM={bpm:.1f} | MEASURES={slide_measures}", (60, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 0, 127), 2, cv2.LINE_AA)
             cv2.circle(frame, (w // 2, h // 2), 160, (0, 243, 255), 4)
 
-        # AI Filter コードリストのパースと複数適用
+        # AI Filter 繧ｳ繝ｼ繝峨Μ繧ｹ繝医�繝代�繧ｹ縺ｨ隍�焚驕ｩ逕ｨ
         filter_list = []
         if ai_filter_codes_json:
             try:
@@ -1294,13 +1406,13 @@ async def api_preview_filter(
             filter_list = [ai_filter_code.strip()]
 
         if not filter_list:
-            raise ValueError("有効な Python AI Filter コードが選択されていません。")
+            raise ValueError("譛牙柑縺ｪ Python AI Filter 繧ｳ繝ｼ繝峨′驕ｸ謚槭＆繧後※縺�∪縺帙ｓ縲�")
 
-        # 単発モード1(single1), 単発モード2(single2), 複合モード(multi) の適用ロジック
+        # 蜊倡匱繝｢繝ｼ繝�1(single1), 蜊倡匱繝｢繝ｼ繝�2(single2), 隍�粋繝｢繝ｼ繝�(multi) 縺ｮ驕ｩ逕ｨ繝ｭ繧ｸ繝�け
         active_filters_to_run = filter_list
 
         if filter_exec_mode == "single1" or filter_exec_mode == "single":
-            # 単発モード1: 重ね合わせは一切せず、選択されたフィルターの中から小節周期・曲調(Energy)に応じて適宜1つだけを単発適用
+            # 蜊倡匱繝｢繝ｼ繝�1: 驥阪�蜷医ｏ縺帙�荳蛻�○縺壹�∈謚槭＆繧後◆繝輔ぅ繝ｫ繧ｿ繝ｼ縺ｮ荳ｭ縺九ｉ蟆冗ｯ蜻ｨ譛溘�譖ｲ隱ｿ(Energy)縺ｫ蠢懊§縺ｦ驕ｩ螳�1縺､縺�縺代ｒ蜊倡匱驕ｩ逕ｨ
             if len(filter_list) > 0:
                 beats_per_bar = 4.0
                 measures = max(1, slide_measures)
@@ -1313,7 +1425,7 @@ async def api_preview_filter(
             else:
                 active_filters_to_run = []
         elif filter_exec_mode == "single2":
-            # 単発モード2: 設定されたBPMに対する設定小節時間(SLIDES CHANGEOVER RATE)ぴったりで順次1つずつ単発切り替え
+            # 蜊倡匱繝｢繝ｼ繝�2: 險ｭ螳壹＆繧後◆BPM縺ｫ蟇ｾ縺吶ｋ險ｭ螳壼ｰ冗ｯ譎る俣(SLIDES CHANGEOVER RATE)縺ｴ縺｣縺溘ｊ縺ｧ鬆�ｬ｡1縺､縺壹▽蜊倡匱蛻�ｊ譖ｿ縺�
             if len(filter_list) > 0:
                 beats_per_bar = 4.0
                 measures = max(1, slide_measures)
@@ -1325,7 +1437,7 @@ async def api_preview_filter(
             else:
                 active_filters_to_run = []
         else:
-            # 複合モード: 選択された全てのフィルターを重ね合わせ(スタック)適用
+            # 隍�粋繝｢繝ｼ繝�: 驕ｸ謚槭＆繧後◆蜈ｨ縺ｦ縺ｮ繝輔ぅ繝ｫ繧ｿ繝ｼ繧帝㍾縺ｭ蜷医ｏ縺�(繧ｹ繧ｿ繝�け)驕ｩ逕ｨ
             active_filters_to_run = filter_list
 
         for f_code in active_filters_to_run:
@@ -1385,6 +1497,8 @@ async def api_preview_filter(
         global last_filter_error_log
         last_filter_error_log = traceback.format_exc()
         err_detail = str(e)
+        print(f"[Error] /preview_filter failed:\n{last_filter_error_log}")
+        
         h, w = 480, 854
         err_frame = np.zeros((h, w, 3), dtype=np.uint8)
         cv2.putText(err_frame, "FILTER RUNTIME ERROR", (30, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
@@ -1394,181 +1508,134 @@ async def api_preview_filter(
             cv2.putText(err_frame, line[:75], (30, 110 + idx * 28), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 220, 255), 1, cv2.LINE_AA)
             
         _, encoded_img = cv2.imencode(".jpg", err_frame)
-        return Response(content=encoded_img.tobytes(), media_type="image/jpeg")
+        headers = {
+            "X-Filter-Error": "true",
+            "X-Filter-Error-Message": err_detail.replace("\n", " ")[:200]
+        }
+        return Response(content=encoded_img.tobytes(), media_type="image/jpeg", headers=headers)
+
+@app.post("/shutdown")
+async def api_shutdown():
+    def kill_process():
+        time.sleep(1)
+        os._exit(0)
+    
+    threading.Thread(target=kill_process, daemon=True).start()
+    return {"status": "success", "message": "SYSTEM SHUTDOWN SEQUENCE INITIATED"}
 
 @app.get("/filters")
 async def api_get_filters():
-    filters_file = get_resource_path("ai_filters.json")
-    if os.path.exists(filters_file):
-        try:
-            with open(filters_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                return data
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to read filters: {e}")
-    return {}
+    return load_ai_filters()
 
 @app.post("/save_filter")
 async def api_save_filter(name: str = Form(...), code: str = Form(...)):
-    filters_file = get_resource_path("ai_filters.json")
-    filters_data = {}
-    if os.path.exists(filters_file):
-        try:
-            with open(filters_file, "r", encoding="utf-8") as f:
-                filters_data = json.load(f)
-        except Exception:
-            filters_data = {}
-            
-    filters_data[name] = code
-    try:
-        with open(filters_file, "w", encoding="utf-8") as f:
-            json.dump(filters_data, f, ensure_ascii=False, indent=4)
-        return {"status": "success", "message": f"Filter '{name}' saved successfully!"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save filter: {e}")
+    filters = load_ai_filters()
+    filters[name] = code
+    save_ai_filters(filters)
+    return {"status": "success", "message": f"Filter '{name}' saved successfully!"}
 
 @app.post("/rename_filter")
 async def api_rename_filter(old_name: str = Form(...), new_name: str = Form(...)):
-    filters_file = get_resource_path("ai_filters.json")
-    if not os.path.exists(filters_file):
-        raise HTTPException(status_code=404, detail="ai_filters.json が存在しません。")
-
     old_name = old_name.strip()
     new_name = new_name.strip()
     if not new_name:
-        raise HTTPException(status_code=400, detail="新しいフィルター名が空です。")
+        raise HTTPException(status_code=400, detail="譁ｰ縺励＞繝輔ぅ繝ｫ繧ｿ繝ｼ蜷阪′遨ｺ縺ｧ縺吶€")
 
-    try:
-        with open(filters_file, "r", encoding="utf-8") as f:
-            filters_data = json.load(f)
+    filters_data = load_ai_filters()
+    if old_name not in filters_data:
+        raise HTTPException(status_code=404, detail=f"繝輔ぅ繝ｫ繧ｿ繝ｼ '{old_name}' 縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ縲�")
 
-        if old_name not in filters_data:
-            raise HTTPException(status_code=404, detail=f"フィルター '{old_name}' が見つかりません。")
+    new_data = {}
+    for k, v in filters_data.items():
+        if k == old_name:
+            new_data[new_name] = v
+        else:
+            new_data[k] = v
 
-        # キー名を変更（順序保持）
-        new_data = {}
-        for k, v in filters_data.items():
-            if k == old_name:
-                new_data[new_name] = v
-            else:
-                new_data[k] = v
-
-        with open(filters_file, "w", encoding="utf-8") as f:
-            json.dump(new_data, f, ensure_ascii=False, indent=4)
-
-        return {"status": "success", "message": f"フィルター名を '{old_name}' から '{new_name}' に変更しました。", "filters": new_data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to rename filter: {e}")
+    save_ai_filters(new_data)
+    return {"status": "success", "message": f"繝輔ぅ繝ｫ繧ｿ繝ｼ蜷阪ｒ '{old_name}' 縺九ｉ '{new_name}' 縺ｫ螟画峩縺励∪縺励◆縲�", "filters": new_data}
 
 @app.post("/auto_repair_filter")
 async def api_auto_repair_filter(
     code: str = Form(...),
+    error_log: Optional[str] = Form(None),
     api_key: Optional[str] = Form(None),
     primary_model: Optional[str] = Form(None)
 ):
     global last_filter_error_log
-    if not last_filter_error_log:
-        raise HTTPException(status_code=400, detail="修正対象のエラーログが存在しません。プレビューでエラーが発生した後に実行してください。")
+    effective_error_log = error_log.strip() if error_log and error_log.strip() else last_filter_error_log
+    if not effective_error_log:
+        effective_error_log = "Runtime execution error occurred during filter preview or frame rendering."
 
-    active_api_key = api_key if api_key else os.environ.get("GEMINI_API_KEY")
+    active_api_key = api_key if api_key and api_key.strip() else os.environ.get("GEMINI_API_KEY")
     if not active_api_key:
-        raise HTTPException(status_code=400, detail="Gemini API Key が設定されていません。環境変数 GEMINI_API_KEY または画面のAPIキー欄に入力してください。")
+        raise HTTPException(status_code=400, detail="Gemini API Key 縺瑚ｨｭ螳壹＆繧後※縺∪縺帙ｓ縲ら腸蠅､画焚 GEMINI_API_KEY 縺ｾ縺溘逕ｻ髱｢縺ｮAPI繧ｭ繝ｼ谺↓蜈･蜉帙＠縺ｦ縺上□縺輔＞縲")
 
     import google.generativeai as genai
     genai.configure(api_key=active_api_key)
 
-    model_name = primary_model if primary_model else "gemini-2.5-flash"
+    system_instruction = """縺ゅ↑縺溘繧ｨ繧ｭ繧ｹ繝代繝 Python (OpenCV / NumPy) 髢狗匱閠〒縺吶€
+荳弱∴繧峨ｌ縺 Python AI 繝輔ぅ繝ｫ繧ｿ繝ｼ繧ｳ繝ｼ繝峨↓蟄伜惠縺吶ｋ螳溯｡梧凾繧ｨ繝ｩ繝ｼ繧ｧ区枚繧ｨ繝ｩ繝ｼ繧剃ｿｮ豁｣縺励※縺上□縺輔＞縲
+
+縲仙宍譬ｼ縺ｪ謖､ｺ縲
+1. 蜃ｺ蜉帙邏皮ｲ九↑ Python 繧ｳ繝ｼ繝峨縺ｿ縺ｫ縺励※縺上□縺輔＞縲りｪｬ譏取枚繧繝ｼ繧ｯ繝€繧ｦ繝ｳ險伜捷``python峨荳€蛻性繧√↑縺〒縺上□縺輔＞縲
+2. `apply_ai_filter(frame: np.ndarray, t: float, duration: float, bpm: float, energy: float) -> np.ndarray` 縺ｮ髢｢謨ｰ螳夂ｾｩ繧堤ｶｭ謖√＠縺ｦ縺上□縺輔＞縲
+3. 蠢ｦ√Λ繧､繝悶Λ繝ｪ (cv2, np, math, random遲) 繧呈ｭ｣縺励￥繧､繝ｳ繝昴繝医＠縺ｦ縺上□縺輔＞縲
+"""
 
     prompt = f"""
-あなたは強力なPython AIアシスタントです。
-以下のPython OpenCV画像処理フィルターコードを実行したところ、実行時エラーが発生しました。
-エラーメッセージとトレースバックを確認し、正しく動作するようにコードを修正してください。
+【エラー詳細ログ】
+{effective_error_log}
 
-【制約事項】
-- 返答には説明文や挨拶、コードフェンス（```python ... ```）を含めず、**純粋なPythonコードのみ**を出力してください。
-- `apply_ai_filter(frame: np.ndarray, t: float, duration: float, bpm: float, energy: float) -> np.ndarray` の関数シグネチャを必ず維持してください。
-- 必要なライブラリ（cv2, np, math, randomなど）のインポートを関数内、またはコードの先頭に必ず含めてください。
-
-【エラーメッセージ】
-{last_filter_error_log}
-
-【元のエラーコード】
+【修正対象コード (コード表示欄の最新コード)】
 {code}
 """
 
-    try:
-        model = genai.GenerativeModel(model_name)
-        response = model.generate_content(prompt)
-        repaired_code = response.text.strip()
+    model_candidates = [primary_model, "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+    response = None
+    last_err = None
 
-        if repaired_code.startswith("```"):
-            lines = repaired_code.splitlines()
-            if lines[0].startswith("```"):
-                lines = lines[1:]
-            if lines and lines[-1].strip() == "```":
-                lines = lines[:-1]
-            repaired_code = "\n".join(lines).strip()
+    for m_name in model_candidates:
+        if not m_name:
+            continue
+        try:
+            model = genai.GenerativeModel(
+                model_name=m_name,
+                system_instruction=system_instruction
+            )
+            response = model.generate_content(prompt)
+            if response and response.text:
+                print(f"[Success] Filter auto-repaired using model: {m_name}")
+                break
+        except Exception as candidate_err:
+            print(f"[Warn] Auto repair with model '{m_name}' failed: {candidate_err}")
+            last_err = candidate_err
 
-        return {"status": "success", "repaired_code": repaired_code}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gemini APIによる自動修正に失敗しました: {e}")
+    if not response or not response.text:
+        raise HTTPException(status_code=500, detail=f"Gemini APIによる自動修正に失敗しました: {last_err}")
 
+    repaired_code = response.text.strip()
+    if repaired_code.startswith("```python"):
+        repaired_code = repaired_code[9:]
+    elif repaired_code.startswith("```"):
+        repaired_code = repaired_code[3:]
+    if repaired_code.endswith("```"):
+        repaired_code = repaired_code[:-3]
 
-@app.get("/status/{session_id}")
-async def api_status(session_id: str):
-    if session_id not in progress_store:
-        raise HTTPException(status_code=404, detail="Session not found")
-    return progress_store[session_id]
-
-def cleanup_old_sessions():
-    """1譎る俣莉･荳顔ｵ碁℃縺励◆蜿､縺�ｸ譎ゅそ繝�す繝ｧ繝ｳ繝輔か繝ｫ繝繧貞炎髯､縺吶ｋ"""
-    try:
-        if not os.path.exists(TEMP_DIR):
-            return
-        now = time.time()
-        for folder_name in os.listdir(TEMP_DIR):
-            if folder_name.startswith("amvg_v2_"):
-                folder_path = os.path.join(TEMP_DIR, folder_name)
-                if os.path.isdir(folder_path):
-                    mtime = os.path.getmtime(folder_path)
-                    # 1譎る俣 (3600遘�) 莉･荳顔ｵ碁℃縺励※縺�ｋ蝣ｴ蜷�
-                    if now - mtime > 3600:
-                        shutil.rmtree(folder_path, ignore_errors=True)
-                        sid = folder_name.replace("amvg_v2_", "")
-                        if sid in progress_store:
-                            del progress_store[sid]
-                        print(f"[Cleanup] Removed expired session folder: {folder_name}")
-    except Exception as e:
-        print(f"[Warning] Session cleanup failed: {e}")
-
-@app.get("/download/{session_id}")
-async def api_download(session_id: str):
-    if session_id not in progress_store:
-        raise HTTPException(status_code=404, detail="Session not found")
-        
-    session_data = progress_store[session_id]
-    session_dir = session_data.get("temp_dir")
-    output_path = os.path.join(session_dir, f"output_v2_{session_id}.mp4")
-    
-    if not os.path.exists(output_path):
-        raise HTTPException(status_code=404, detail="File is still rendering")
-        
-    return FileResponse(
-        path=output_path,
-        media_type="video/mp4",
-        filename="amvg_v2_output.mp4"
-    )
+    return {"status": "success", "repaired_code": repaired_code.strip()}
 
 @app.get("/", response_class=HTMLResponse)
 async def api_webui():
-    index_path = get_resource_path("index.html")
+    index_path = get_external_data_path("index.html")
+    if not os.path.exists(index_path):
+        index_path = get_resource_path("index.html")
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:
             return HTMLResponse(content=f.read(), status_code=200)
-    return HTMLResponse(content="<h1>AMVG v2 index.html not found</h1>", status_code=404)
+    return HTMLResponse(content="<h1>AMVG index.html not found</h1>", status_code=404)
 
 # ==========================================
-# CLI / 繝｡繧､繝ｳ襍ｷ蜍�
+# CLI / メイン起動
 # ==========================================
 
 def main():
@@ -1594,6 +1661,7 @@ def main():
     parser.add_argument("--api-key", type=str, help="Gemini API キー")
     parser.add_argument("--lyrics", type=str, help="歌詞テキストまたはSRTへのパス")
     parser.add_argument("--metadata-json", type=str, help="すでに生成済みのメタデータJSONを指定")
+    parser.add_argument("--encoder", type=str, choices=["libx264", "h264_nvenc"], default="libx264", help="動画エンコーダー (libx264: CPU, h264_nvenc: NVIDIA GPU加速)")
     
     args = parser.parse_args()
     
@@ -1616,13 +1684,13 @@ def main():
         # 既に稼働中の場合は、新しいサーバーを立てずにブラウザだけを開いて終了する
         if is_port_in_use(args.port):
             print(f"[System] ポート {args.port} は既に使用されています。既存のセッションを開きます。")
-            webbrowser.open(f"http://127.0.0.1:{args.port}/?v={int(time.time())}")
+            webbrowser.open(f"http://127.0.0.1:{args.port}")
             sys.exit(0)
 
         print("[WebUI] Starting A.M.V.G v2 Web Server...")
         def open_browser():
             time.sleep(1.5)
-            webbrowser.open(f"http://127.0.0.1:{args.port}/?v={int(time.time())}")
+            webbrowser.open(f"http://127.0.0.1:{args.port}")
             
         threading.Thread(target=open_browser, daemon=True).start()
         # EXE環境でuvicornを安全に起動するため、"main:app" ではなく app オブジェクトを直接渡す
@@ -1652,6 +1720,7 @@ def main():
             api_key=api_key,
             lyrics_path=args.lyrics,
             metadata_json_path=args.metadata_json,
+            video_encoder=args.encoder,
             is_async=False
         )
         print(f"[Success] Render complete! Output file: {args.output}")
