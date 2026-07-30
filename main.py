@@ -46,7 +46,7 @@ app = FastAPI(title="AMVG V10 Free UPG API")
 async def favicon():
     from fastapi.responses import Response
     return Response(status_code=204)
-print("==================== DEBUG: main.py V10 Free UPG (BPM Sync Engine) (Kinetic Animation & Multi-Exec Engine) loaded! ====================")
+print("==================== DEBUG: main.py V10 Free UPG (BPM Timing Sync Engine) (Kinetic Animation & Multi-Exec Engine) loaded! ====================")
 
 @app.get("/.well-known/appspecific/com.chrome.devtools.json")
 async def chrome_devtools_json():
@@ -1647,7 +1647,7 @@ def main():
     if sys.stderr is None:
         sys.stderr = open(os.devnull, 'w')
 
-    parser = argparse.ArgumentParser(description="Antigravity MV Generator V10 Free")
+    parser = argparse.ArgumentParser(description="Antigravity MV Generator V10 Free UPG")
     
     parser.add_argument("--web", action="store_true", help="Web UIサーバーモードで起動する")
     parser.add_argument("--port", type=int, default=8003, help="Webサーバーのポート番号")
@@ -1730,7 +1730,6 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    # PyInstallerでのマルチプロセス実行が暴走するのを防ぐ必須コード
     import multiprocessing
     multiprocessing.freeze_support()
     main()
