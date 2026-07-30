@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>    <meta charset="UTF-8">    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <title>AMVG V10 Free /* ANTIGRAVITY MV GENERATOR (Kinetic Animation Engine) */</title>    <!-- Google Fonts -->    <link rel="preconnect" href="https://fonts.googleapis.com">    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">        <!-- Tailwind CSS (CDN) -->    <script src="https://cdn.tailwindcss.com"></script>
+<head>    <meta charset="UTF-8">    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <title>AMVG V10 Free UPG UPG /* ANTIGRAVITY MV GENERATOR (Kinetic Animation Engine) */</title>    <!-- Google Fonts -->    <link rel="preconnect" href="https://fonts.googleapis.com">    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">        <!-- Tailwind CSS (CDN) -->    <script src="https://cdn.tailwindcss.com"></script>
     <script>
         /* GLOBAL STATE VARIABLES & DOM ELEMENTS */
         let selectedAudio = null;
@@ -24,12 +24,6 @@
         let inputAssets = null;
         let pollInterval = null;
         
-        /* MULTI-ASSET DRAG & DROP REORDER STATE */
-        let dropPlaceholder = null;
-        let activeTargetIndex = -1;
-        let activeTargetPos = "after";
-        let isContainerEventsBound = false;
-        
         let alignerAudio = null;
         /* TIMELINE EDITOR (MVmakerTiny v53 移植) */
         let selectedItems = []; // 選択中のアイテムID {id, type} のリスト
@@ -42,8 +36,13 @@
         let selectionStartY = 0;
         let selectionBox = null;
         
+        /* ASSET LIST DRAG & DROP STATE */
+        let dropPlaceholder = null;
+        let activeTargetIndex = -1;
+        let activeTargetPos = "before";
+        let isContainerEventsBound = false;
         /* GLOBAL SAFE LOGGING FUNCTION */
-        function addLog(text, type = 'render') {
+        window.addLog = function(text, type = 'render') {
            consolePanel = document.getElementById('console-panel');
            if (!consolePanel) {
                console.log(`[${type}] ${text}`);
@@ -54,8 +53,11 @@
            line.innerText = `[${new Date().toLocaleTimeString()}] ${text}`;
            consolePanel.appendChild(line);
            consolePanel.scrollTop = consolePanel.scrollHeight;
+       };
+
+       if (typeof addLog === 'undefined') {
+           var addLog = window.addLog;
        }
-       window.addLog = addLog;
 </script>
     <!-- JSZip (Client Zip packaging) -->    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js">
 
@@ -349,113 +351,83 @@ border-bottom-right-radius: 4px;
        .btn-overlay-item {
            transition: all 0.2s;
        }
-
-       /* MVmakerTiny Timeline Styles */
-       .work-area-bar {
-           position: absolute;
-           top: 0;
-           height: 12px;
-           background-color: rgba(76, 175, 80, 0.45);
-           z-index: 40;
-           border-left: 2px solid #4CAF50;
-           border-right: 2px solid #4CAF50;
-           box-sizing: border-box;
-       }
-       .work-area-handle {
-           position: absolute;
-           top: 0;
-           width: 12px;
-           height: 12px;
-           cursor: ew-resize;
-           background-color: #4CAF50;
-           box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
-       }
-       .work-area-handle.in-handle {
-           left: -6px;
-           border-radius: 4px 0 0 4px;
-       }
-       .work-area-handle.out-handle {
-           right: -6px;
-           border-radius: 0 4px 4px 0;
-       }
-       .work-area-overlay {
-           position: absolute;
-           top: 0;
-           bottom: 0;
-           background-color: rgba(0, 0, 0, 0.65);
-           z-index: 35;
-           pointer-events: none;
-       }
-       .timeline-track-label {
-           position: sticky;
-           left: 0;
-           background-color: #0b0c16;
-           padding: 0 10px;
-           font-size: 9px;
-           font-family: monospace;
-           width: 120px;
-           box-sizing: border-box;
-           border-right: 1px solid rgba(6, 182, 212, 0.3);
-           z-index: 20;
-           color: #06b6d4;
-           display: flex;
-           justify-content: space-between;
-           align-items: center;
-           height: 100%;
-       }
-       .lyric-track {
-           height: 42px;
-           border-bottom: 1px solid rgba(6, 182, 212, 0.15);
-           position: relative;
-           background-color: rgba(255, 255, 255, 0.01);
-       }
-       .lyric-block.selected {
-           border: 2px solid #ffeb3b !important;
-           box-shadow: 0 0 10px rgba(255, 235, 95, 0.8) !important;
-           z-index: 50 !important;
-       }
-       .ruler-measure-num {
-           position: absolute;
-           font-size: 8px;
-           font-family: monospace;
-           color: rgba(6, 182, 212, 0.6);
-           pointer-events: none;
-           white-space: nowrap;
-       }
-       .timeline-scroll-area::-webkit-scrollbar {
-           width: 6px;
-           height: 6px;
-       }
-       .timeline-scroll-area::-webkit-scrollbar-track {
-           background: rgba(0,0,0,0.3);
-       }
-       .timeline-scroll-area::-webkit-scrollbar-thumb {
-           background: rgba(6, 182, 212, 0.4);
-           border-radius: 3px;
-       }
    </style>
 </head>
 <body class="min-h-screen p-4 md:p-8 flex flex-col items-center justify-start">    <div class="crt-overlay">
 </div>    <!-- HQ Export Overlay -->    <div id="export-overlay">        <div class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-fuchsia-500 tracking-widest font-mono" id="export-status">HQ Rendering...</div>        <div class="export-progress-container">            <div id="export-progress-bar">
-</div>        </div>        <div class="text-xs text-gray-400 font-mono tracking-wider" id="export-details">Initializing FFmpeg engine...</div>    </div>    <!-- MAIN CONTAINER -->    <div class="w-full max-w-7xl bg-[#06060c]/95 border-2 border-cyan-500 rounded-xl shadow-[0_0_30px_rgba(0,243,255,0.2)] p-6 md:p-8 z-10 backdrop-blur-md relative overflow-hidden">                <!-- HEADER -->        <div class="text-center mb-6 border-b border-cyan-500/30 pb-5 relative">            <h1 class="text-4xl font-black tracking-widest text-white font-mono text-shadow-glow">                AMVG <span class="text-[var(--neon-magenta)]">V10 Free</span> /* KINETIC_ANIMATION_ENGINE             */</h1>            <p class="text-xs text-cyan-300/60 mt-2">SYS_VER: 2026.07.21a (MULTI_EXEC_ENGINE) | HYBRID RENDER CORE ONLINE</p>        </div>        <!-- file:// 警告バナー -->        <div id="file-protocol-warning" class="hidden mb-6 p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-lg text-yellow-400 text-xs space-y-2">            <p class="font-bold flex items-center">⚠️ 【警告】ローカルファイルとして直接開かれています (file://)</p>            <p>ブラウザのセキュリティ制限により、エフェクトの書き出し（エクスポート）時にエラーが発生し、録画が正常に機能しない場合があります。Pythonサーバー（main.py経由）で開くことを強く推奨します。</p>        </div>        
-<!-- TABS NAV -->
-        <div class="flex flex-wrap gap-2 mb-6 border-b border-cyan-500/20 pb-4">
-            <button id="tab-gen-btn" class="tab-btn flex-1 min-w-[120px] bg-black/60 border border-cyan-500/40 text-cyan-500/70 py-3 px-4 rounded-lg font-bold tracking-wider hover:text-white transition-all text-xs md:text-sm active">📹 MV GENERATOR</button>
-            <button id="tab-asset-btn" class="tab-btn flex-1 min-w-[120px] bg-black/60 border border-cyan-500/40 text-cyan-500/70 py-3 px-4 rounded-lg font-bold tracking-wider hover:text-white transition-all text-xs md:text-sm hidden">🧠 AI ASSET FACTORY</button>
-            <button id="tab-align-btn" class="tab-btn flex-1 min-w-[120px] bg-black/60 border border-cyan-500/40 text-cyan-500/70 py-3 px-4 rounded-lg font-bold tracking-wider hover:text-white transition-all text-xs md:text-sm">⏱️ SRT ALIGNER</button>
-            <button id="tab-mutate-btn" class="tab-btn flex-1 min-w-[120px] bg-black/60 border border-cyan-500/40 text-cyan-500/70 py-3 px-4 rounded-lg font-bold tracking-wider hover:text-white transition-all text-xs md:text-sm hidden">👾 SYSTEM MUTATOR</button>
-            
-            <!-- SHUTDOWN BUTTON -->
-            <div class="flex-grow"></div>
-            <button id="btn-shutdown" class="min-w-[120px] bg-red-950/60 border border-red-500/40 text-red-400 py-3 px-4 rounded-lg font-bold tracking-wider hover:text-white hover:bg-red-500 transition-all text-xs md:text-sm shadow-[0_0_10px_rgba(239,68,68,0.2)]">
-                🛑 SHUTDOWN SYSTEM
-            </button>
-        </div>
- <!-- MAIN LAYOUT GRID -->        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">                        <!-- LEFT PANEL (CONTROLS) -->            <div id="left-panel" class="lg:col-span-6 space-y-6 transition-all duration-300">                <!-- ========================================================= -->                <!-- TAB 1: MV GENERATOR -->                <!-- ========================================================= -->                <div id="section-generator" class="tab-content block space-y-6">                    <div class="text-sm font-bold text-cyan-400 border-b border-cyan-500/20 pb-1">1. SOURCE ASSETS</div>                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">                        <!-- AUDIO UPLOAD -->                        <div>                            <label class="block text-xs font-bold text-white mb-2">AUDIO FILE (.mp3, .wav, .m4a)</label>                            <div class="drop-zone rounded-lg p-4 text-center cursor-pointer border-2" id="audio-drop-zone">                                <span class="text-xs block text-cyan-400 font-mono" id="audio-file-name">DRAG & DROP OR CLICK</span>                                <input type="file" id="input-audio" accept="audio/*" class="hidden">                            </div>                        </div>                        <!-- LYRICS FILE (OPTIONAL) -->                        <div>                            <div class="flex justify-between items-center mb-2">                                <label class="text-xs font-bold text-white">LYRICS FILE (.srt, .txt)</label>                                <div id="aligner-apply-container" class="hidden items-center space-x-2 text-xs">                                    <input type="checkbox" id="toggle-use-aligner-data" class="accent-fuchsia-500">                                    <span class="text-fuchsia-400 font-bold">TIMELINE BIND ACTIVE</span>                                </div>                            </div>                            <div class="drop-zone rounded-lg p-4 text-center cursor-pointer border-2" id="lyrics-drop-zone">                                <span class="text-xs block text-cyan-400 font-mono" id="lyrics-file-name">DRAG & DROP OR CLICK (.SRT/.TXT)</span>                                <input type="file" id="input-lyrics" accept=".srt,.txt" class="hidden">                            </div>                        </div>                    </div>                    <!-- BACKGROUND IMAGES / VIDEOS (FULL WIDTH) -->                    <div class="mt-4">                        <label class="block text-xs font-bold text-white mb-2">BACKGROUND IMAGES / VIDEOS (MULTI OK)</label>                        <div class="drop-zone rounded-lg p-4 text-center cursor-pointer border-2" id="assets-drop-zone">                            <span class="text-xs block text-cyan-400 font-mono" id="assets-count">DRAG & DROP OR CLICK</span>                            <input type="file" id="input-assets" accept="image/*,video/*" multiple class="hidden">                        </div>                        <div id="assets-list-container" class="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2 max-h-[220px] overflow-y-auto p-2 bg-black/40 border border-cyan-500/10 rounded hidden">
-</div>                    </div>                    <button class="w-full py-3 bg-cyan-950/40 border border-cyan-500 text-cyan-400 rounded-lg font-bold text-xs tracking-widest hover:bg-cyan-500 hover:text-black transition-all mb-4" id="btn-toggle-generator-settings">                        ⚙️ SHOW DETAILED CONFIGURATION                    </button>                        <!-- CHECKS -->                        <div>                            <span class="block text-xs font-bold text-white mb-2">BIOMETRIC OVERLAY (OPENCV)</span>                            <div class="flex gap-4">                                <label class="flex items-center space-x-2 text-xs text-cyan-300 cursor-pointer">                                    <input type="checkbox" id="enable-ecg" checked class="accent-cyan-500"> <span>ECG (心電図)</span>                                </label>                                <label class="flex items-center space-x-2 text-xs text-cyan-300 cursor-pointer">                                    <input type="checkbox" id="enable-grf" checked class="accent-cyan-500"> <span>GRF (床反力)</span>                                </label>                                <label class="flex items-center space-x-2 text-xs text-cyan-300 cursor-pointer">                                    <input type="checkbox" id="enable-hexdump" checked class="accent-cyan-500"> <span>HEXDUMP</span>                                </label>                            </div>                        </div>                        <!-- AI ORCHESTRATION & KINETIC LYRIC -->                        <div class="border-t border-cyan-500/20 pt-3">                            <span class="block text-xs font-bold text-white mb-2">AI MUSIC & LYRIC ORCHESTRATION</span>                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">                                <div class="space-y-2">                                    <label class="flex items-center space-x-2 text-xs text-cyan-300 cursor-pointer">                                        <input type="checkbox" id="enable-ai-orchestration" class="accent-cyan-500">                                        <span class="font-bold text-cyan-400">🎸 AI自動エフェクト連携</span>                                    </label>                                    <span class="block text-[10px] text-gray-500">※楽曲展開をAIが解析し、BPM/エネルギーに合わせてエフェクト強弱を自動設計します。</span>                                </div>                                <div class="space-y-2">                                    <label class="flex items-center space-x-2 text-xs text-cyan-300 cursor-pointer">                                        <input type="checkbox" id="enable-kinetic-lyric" checked class="accent-cyan-500">                                        <span class="font-bold text-cyan-400">👾 キネティック/グリッチ歌詞</span>                                    </label>                                    <div class="flex items-center space-x-2 mt-1">                                        <span class="text-[10px] text-gray-400">STYLE:</span>                                        <select id="lyric-effect-style" class="bg-black border border-cyan-500 text-cyan-300 text-[10px] rounded p-1 w-full focus:outline-none">                                            <option value="SIMPLE">SIMPLE FLAT (標準)</option>                                            <option value="KINETIC_BOUNCE">BEAT PUMPING (リズム弾み)</option>                                            <option value="GLITCH">GLITCH & SLICE (グリッチノイズ)</option>                                            <option value="CHROME_RGB">CHROMATIC RGB (色収差色ズレ)</option>                                            <option value="NEON_GLOW">NEON GLOW (ネオン発光)</option>                                        </select>                                    </div>                                </div>                            </div>                        </div>                    <div id="generator-settings-panel" class="hidden space-y-4 bg-black/60 p-4 border border-cyan-500/20 rounded-lg">                        <!-- GEMINI API KEY CONFIG -->                        <div class="border-b border-cyan-500/20 pb-3">                            <div class="flex justify-between items-center mb-1">                                <label class="text-xs font-bold text-cyan-300 flex items-center gap-1">                                    <span>🔑 GEMINI API KEY CONFIG</span>                                </label>                                <button id="btn-clear-api-key" type="button" class="text-[9px] border border-red-500/40 text-red-400 px-2 py-0.5 rounded hover:bg-red-500 hover:text-black transition-all">CLEAR KEY</button>                            </div>                            <input type="password" id="api-key-input" placeholder="AIzaSy..."                                 class="w-full bg-black border border-cyan-500/60 text-green-400 text-xs p-2 rounded focus:outline-none focus:border-cyan-400 font-mono">                            <div id="api-key-preview" class="text-[9px] text-gray-400 font-mono mt-1">Active Key: None (環境変数 GEMINI_API_KEY が定義されている場合は自動的に優先利用されます)</div>                        </div>                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">                            <div>                                <label class="block text-xs font-bold text-white mb-1">ASPECT RATIO</label>                                <select id="aspect-select" class="bg-black border border-cyan-500 text-cyan-300 text-xs rounded p-2 w-full">                                    <option value="16:9">16:9 (HORIZONTAL)</option>                                    <option value="9:16">9:16 (VERTICAL)</option>                                </select>                            </div>                            <div>                                <label class="block text-xs font-bold text-white mb-1">FRAME RATE (FPS)</label>                                <select id="fps-select" class="bg-black border border-cyan-500 text-cyan-300 text-xs rounded p-2 w-full">                                    <option value="30" selected>30 FPS (STANDARD)</option>                                    <option value="24">24 FPS (CINEMATIC)</option>                                    <option value="60">60 FPS (HIGH SMOOTH)</option>                                </select>                            </div>                            <div>                                <label class="block text-xs font-bold text-white mb-1">PRIMARY AI MODEL</label>                                <select id="primary-model" class="bg-black border border-cyan-500 text-cyan-300 text-xs rounded p-2 w-full">                                    <option value="gemini-3.5-flash">GEMINI 3.5 FLASH</option>                                    <option value="gemini-3.1-flash-lite">GEMINI 3.1 FLASH LITE</option>                                </select>                            </div>                        </div>                        <!-- CHECKS -->                        <div>                            <span class="block text-xs font-bold text-white mb-2">BIOMETRIC OVERLAY (OPENCV)</span>                            <div class="flex gap-4">                                <label class="flex items-center space-x-2 text-xs text-cyan-300 cursor-pointer">                                    <input type="checkbox" id="enable-ecg" checked class="accent-cyan-500"> <span>ECG (心電図)</span>                                </label>                                <label class="flex items-center space-x-2 text-xs text-cyan-300 cursor-pointer">                                    <input type="checkbox" id="enable-grf" checked class="accent-cyan-500"> <span>GRF (床反力)</span>                                </label>                                <label class="flex items-center space-x-2 text-xs text-cyan-300 cursor-pointer">                                    <input type="checkbox" id="enable-hexdump" checked class="accent-cyan-500"> <span>HEXDUMP</span>                                </label>                            </div>                        </div>                        <!-- SLIDERS -->                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">                            <div>                                <div class="flex justify-between text-xs font-bold mb-1">                                    <span>PIXEL MELT INTENSITY</span>                                    <span id="max-melt-val" class="text-cyan-400">1.0</span>                                </div>                                <input type="range" id="max-melt" min="0.0" max="3.0" step="0.1" value="1.0" class="w-full accent-cyan-500">                            </div>                            <div>                                <div class="flex justify-between text-xs font-bold mb-1">                                    <span>GLITCH FREQUENCY</span>                                    <span id="glitch-freq-val" class="text-cyan-400">1.0</span>                                </div>                                <input type="range" id="glitch-freq" min="0.0" max="3.0" step="0.1" value="1.0" class="w-full accent-cyan-500">                            </div>                        </div>                        <!-- SUBTITLE COLOR & FONT STYLE -->                        <div class="grid grid-cols-2 gap-4">                            <div>                                <label class="block text-[10px] font-bold text-white mb-1">HARD-SUB COLOR</label>                                <select id="subtitle-color" class="bg-black border border-cyan-500 text-cyan-300 text-[11px] rounded p-2 w-full">                                    <option value="pure_white" selected>PURE WHITE</option>                                    <option value="cyan_magenta">CYAN / MAGENTA</option>                                    <option value="green_cyan">GREEN / CYAN</option>                                    <option value="magenta_green">MAGENTA / GREEN</option>                                    <option value="white_cyan">WHITE / CYAN</option>                                </select>                            </div>                            <div>                                <label class="block text-[10px] font-bold text-white mb-1">FONT STYLE</label>                                <select id="subtitle-font" class="bg-black border border-cyan-500 text-cyan-300 text-[11px] rounded p-2 w-full">                                    <option value="gothic" selected>GOTHIC (ゴシック体)</option>                                    <option value="mincho">MINCHO (明朝体)</option>                                </select>                            </div>                        </div>                        <!-- TEMPO SYNCHRONIZATION -->                        <div class="border-t border-cyan-500/20 pt-3">                            <span class="block text-xs font-bold text-white mb-2">BPM & TEMPO SYNC</span>                            <div class="grid grid-cols-2 gap-4 mb-2">                                <div>                                    <label class="block text-[10px] text-gray-400">BPM (tempo)</label>                                    <input type="number" id="config-bpm" min="30" max="300" step="0.01" value="120.00" class="bg-black border border-cyan-500 text-cyan-400 text-xs p-2 rounded w-full">                                </div>                                <div>                                    <label class="block text-[10px] text-gray-400">OFFSET (sec)</label>                                    <input type="number" id="config-bpm-offset" min="0" max="60" step="0.001" value="0.000" class="bg-black border border-cyan-500 text-cyan-400 text-xs p-2 rounded w-full">                                </div>                            </div>                            <button class="w-full py-2 bg-purple-950/20 border border-purple-500 text-purple-400 rounded font-bold text-xs hover:bg-purple-500 hover:text-black transition-all mb-2" id="btn-analyze-bpm" type="button">                                ⚡ DETECT BPM AUTOMATICALLY FROM AUDIO                            </button>                            <div class="grid grid-cols-1 gap-2">                                <div>                                    <label class="block text-[10px] text-gray-400">SLIDES CHANGEOVER RATE (小節数)</label>                                    <input type="number" id="slide-measures" min="1" max="16" value="4" class="bg-black border border-cyan-500 text-cyan-400 text-xs p-2 rounded w-full">                                </div>                                <div id="slide-preview-text" class="text-[10px] text-cyan-400/80 font-mono mt-1">
-</div>                            </div>                        </div>                    </div>                    <!-- Python AI Filter Code Block -->                    <div class="p-4 bg-gray-955 border border-purple-500/30 rounded-lg space-y-3">                        <div class="flex justify-between items-center">                            <span class="text-xs font-bold text-purple-400">🐍 BACKEND PYTHON AI FILTER (OPENCV)</span>                            <div>                                <button id="btn-load-saved-py-filters" class="text-[10px] border border-purple-500/40 text-purple-300 px-2 py-0.5 rounded bg-purple-950/30 hover:bg-purple-900/60 font-bold transition-all">REFRESH</button>                            </div>                        </div>                                                <!-- フィルターマルチ選択パネル -->                        <div id="saved-py-filters-dropdown-container" class="bg-black/90 border border-purple-500/40 rounded-lg p-3 space-y-2.5">                            <div class="flex justify-between items-center pb-2 border-b border-purple-500/20">                                <div class="flex items-center gap-3">                                    <span class="text-xs font-bold text-purple-300">🧬 FILTER EXECUTION MODE:</span>                                    <label class="flex items-center gap-1 cursor-pointer text-xs" title="単発1: 曲調や音圧エネルギーに応じて適宜切り替え">                                        <input type="radio" name="filter-exec-mode" value="single1" class="accent-purple-500 cursor-pointer" />                                        <span class="text-cyan-300 font-bold">🎯 SINGLE 1 (適応)</span>                                    </label>                                    <label class="flex items-center gap-1 cursor-pointer text-xs" title="単発2: 設定されたBPMと小節切り替え時間ぴったりに順次切り替え">                                        <input type="radio" name="filter-exec-mode" value="single2" class="accent-purple-500 cursor-pointer" />                                        <span class="text-emerald-300 font-bold">🎯 SINGLE 2 (小節時間同期)</span>                                    </label>                                    <label class="flex items-center gap-1 cursor-pointer text-xs" title="複合: 選択されたフィルターをすべて重ね合わせ">                                        <input type="radio" name="filter-exec-mode" value="multi" class="accent-purple-500 cursor-pointer" checked />                                        <span class="text-fuchsia-300 font-bold">🧬 MULTI (複合)</span>                                    </label>                                </div>                                <div class="flex items-center gap-2">                                    <label class="flex items-center gap-1.5 cursor-pointer text-xs bg-purple-950/60 hover:bg-purple-900 border border-purple-500/40 hover:border-purple-400 px-2.5 py-1 rounded transition-all shadow" title="すべてのフィルターを一括で全選択/全解除">                                        <input type="checkbox" id="chk-select-all-filters" class="accent-purple-500 cursor-pointer w-4 h-4" />                                        <span class="font-bold text-[11px] text-cyan-300">☑ 全選択 (ALL)</span>                                    </label>                                </div>                            </div>                            <div id="saved-py-filters-list" class="max-h-52 overflow-y-auto space-y-1.5 pr-1 text-xs">                                <!-- JS で動的生成: チェックボックス + フィルター名 + EDIT + DELETE -->                            </div>                        </div>                        <!-- アクションボタン群 (VIEW のみ) -->                        <div>                            <button id="btn-toggle-py-editor" class="w-full py-2 bg-gray-900 border border-gray-700 text-gray-300 font-bold rounded text-xs hover:bg-gray-800 transition-all flex justify-center items-center">                                <span>VIEW CODE (コードの表示)</span>                            </button>                        </div>                        <!-- コードエディタ領域 (VIEW ボタンでトグル表示) -->                        <div id="py-editor-container" class="hidden space-y-2">                            <textarea id="py-filter-editor" readonly rows="9" placeholder="選択したフィルターのPythonコードが表示されます（Free版では閲覧のみ可能です）" class="w-full bg-gray-900/60 text-gray-400 font-mono text-[10px] p-2.5 border border-purple-500/30 rounded focus:outline-none leading-normal cursor-default">
-</textarea>                                                        <div>                                <button id="btn-preview-py-filter" class="w-full py-2 bg-cyan-950/40 border border-cyan-500 text-cyan-300 hover:bg-cyan-500 hover:text-black rounded text-xs font-bold transition-all flex items-center justify-center gap-1">                                    <span>👁️ PREVIEW FILTER</span>                                </button>                            </div>                        </div>                        <div id="py-status" class="text-[10px] text-gray-500 text-center h-2">
-</div>                    </div>                    <!-- BINDING TEXT BANNER -->                    <div class="editor-status-banner border border-green-500/30 bg-green-500/5 text-green-400 text-xs p-3 rounded-lg flex items-center justify-between" id="aligner-link-banner" style="display: none;">                        <span class="font-bold">🟢 SRT TIMELINE ALIGNMENT BIND ACTIVE: 編集済みのタイミングを動画生成に適用します。</span>                    </div>                    <!-- PROJECT ZIP EXPORT/IMPORT SECTION -->                    <div class="p-4 bg-gray-955 border border-cyan-500/30 rounded-lg space-y-3">                        <span class="text-xs font-bold text-cyan-400">📦 PROJECT BACKUP (プロジェクトZIP保存 / 復元)</span>                        <div class="grid grid-cols-2 gap-3">                            <button id="btn-export-project" class="py-2.5 bg-cyan-950/40 border border-cyan-500 text-cyan-300 font-bold rounded text-xs hover:bg-cyan-500 hover:text-black transition-all flex justify-center items-center gap-1.5">                                <span>📦 EXPORT ZIP</span>                            </button>                            <button id="btn-import-project" class="py-2.5 bg-fuchsia-950/40 border border-fuchsia-500 text-fuchsia-300 font-bold rounded text-xs hover:bg-fuchsia-500 hover:text-black transition-all flex justify-center items-center gap-1.5">                                <span>📥 IMPORT ZIP</span>                            </button>                            <input type="file" id="input-import-project" accept=".zip" class="hidden">                        </div>                    </div>                    <!-- GENERATION BUTTON -->                    <button class="w-full py-4 bg-gradient-to-r from-cyan-600 to-fuchsia-600 hover:from-cyan-500 hover:to-fuchsia-500 text-white font-black font-mono tracking-widest text-sm rounded-lg hover:shadow-[0_0_20px_rgba(0,243,255,0.4)] transition-all uppercase" id="btn-generate">                        GENERATE AUTOMATED MV                    </button>                </div>                <!-- ========================================================= -->                <!-- TAB 2: AI ASSET FACTORY (CANVAS ENGINE) -->                <!-- ========================================================= -->                <div id="section-asset" class="tab-content hidden space-y-6">                                        <div class="grid grid-cols-2 gap-4">                        <div>                            <label class="block text-xs font-bold text-cyan-400 mb-1">SOURCE MODE</label>                            <div class="grid grid-cols-2 gap-2" id="source-mode-btns">                                <button data-val="VIDEO" class="py-2 bg-cyan-500/20 border border-cyan-400 text-white rounded text-xs font-bold">📹 VIDEO</button>                                <button data-val="DURATION" class="py-2 bg-gray-900 border border-gray-700 text-gray-500 rounded text-xs font-bold">⏱️ DURATION</button>                            </div>                        </div>                        <div>                            <label class="block text-xs font-bold text-cyan-400 mb-1">ASPECT RATIO</label>                            <div class="grid grid-cols-2 gap-2" id="canvas-aspect-btns">                                <button data-val="9:16" class="py-2 bg-cyan-500/20 border border-cyan-400 text-white rounded text-xs font-bold">9:16 (VERTICAL)</button>                                <button data-val="16:9" class="py-2 bg-gray-900 border border-gray-700 text-gray-500 rounded text-xs font-bold">16:9 (HORIZONTAL)</button>                            </div>                        </div>                    </div>                    <!-- DYNAMIC INPUT CONFIG -->                    <div class="p-3 bg-gray-950 border border-cyan-500/20 rounded-lg">                        <div id="canvas-video-panel" class="space-y-3">                            <input type="file" id="canvas-video-upload" accept="video/*"                                 class="w-full text-xs text-gray-400 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-bold file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20 transition-all cursor-pointer border border-dashed border-cyan-500/30 p-2 rounded"                            />                            <div class="grid grid-cols-2 gap-2">                                <button id="btn-outmode-combined" class="py-1.5 bg-cyan-500/20 border border-cyan-400 text-white rounded text-[10px] font-bold">COMBINED (合成)</button>                                <button id="btn-outmode-overlay" class="py-1.5 bg-gray-900 border border-gray-700 text-gray-500 rounded text-[10px] font-bold">OVERLAY ONLY (黒背景)</button>                            </div>                        </div>                                                <div id="canvas-duration-panel" class="space-y-1 hidden">                            <label class="block text-[10px] text-gray-400">GENERATION TIME (SECONDS)</label>                            <input type="number" id="canvas-duration-input" step="0.5" min="0.5" max="60" value="3.0"                                class="w-full bg-black border border-cyan-500/50 rounded p-2 text-cyan-400 focus:outline-none focus:border-cyan-400 transition-all text-xs"                            />                        </div>                    </div>                    <!-- OVERLAY TYPE SELECTOR -->                    <div>                        <label class="block text-xs font-bold text-cyan-400 mb-2">UI OVERLAY TYPE</label>                        <div class="flex space-x-1 mb-3 bg-gray-950 p-1 rounded border border-gray-800 overflow-x-auto" id="category-tabs">
+</div>        </div>        <div class="text-xs text-gray-400 font-mono tracking-wider" id="export-details">Initializing FFmpeg engine...</div>    </div>    <!-- MAIN CONTAINER -->    <div class="w-full max-w-7xl bg-[#06060c]/95 border-2 border-cyan-500 rounded-xl shadow-[0_0_30px_rgba(0,243,255,0.2)] p-6 md:p-8 z-10 backdrop-blur-md relative overflow-hidden">                <!-- HEADER -->        <div class="text-center mb-6 border-b border-cyan-500/30 pb-5 relative">            <h1 class="text-4xl font-black tracking-widest text-white font-mono text-shadow-glow">                AMVG <span class="text-[var(--neon-magenta)]">v10 PRO</span> /* KINETIC_ANIMATION_ENGINE             */</h1>            <p class="text-xs text-cyan-300/60 mt-2">SYS_VER: 2026.07.21a (MULTI_EXEC_ENGINE) | HYBRID RENDER CORE ONLINE</p>        </div>        <!-- file:// 警告バナー -->        <div id="file-protocol-warning" class="hidden mb-6 p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-lg text-yellow-400 text-xs space-y-2">            <p class="font-bold flex items-center">⚠️ 【警告】ローカルファイルとして直接開かれています (file://)</p>            <p>ブラウザのセキュリティ制限により、エフェクトの書き出し（エクスポート）時にエラーが発生し、録画が正常に機能しない場合があります。Pythonサーバー（main.py経由）で開くことを強く推奨します。</p>        </div>        <!-- TABS NAV -->        <div class="flex flex-wrap gap-2 mb-6 border-b border-cyan-500/20 pb-4">            <button id="tab-gen-btn" class="tab-btn flex-1 min-w-[120px] bg-black/60 border border-cyan-500/40 text-cyan-500/70 py-3 px-4 rounded-lg font-bold tracking-wider hover:text-white transition-all text-xs md:text-sm active">📹 MV GENERATOR</button>            <button id="tab-asset-btn" class="tab-btn flex-1 min-w-[120px] bg-black/60 border border-cyan-500/40 text-cyan-500/70 py-3 px-4 rounded-lg font-bold tracking-wider hover:text-white transition-all text-xs md:text-sm">🧠 AI ASSET FACTORY</button>            <button id="tab-align-btn" class="tab-btn flex-1 min-w-[120px] bg-black/60 border border-cyan-500/40 text-cyan-500/70 py-3 px-4 rounded-lg font-bold tracking-wider hover:text-white transition-all text-xs md:text-sm">⏱️ SRT ALIGNER</button>            <button id="tab-mutate-btn" class="tab-btn flex-1 min-w-[120px] bg-black/60 border border-cyan-500/40 text-cyan-500/70 py-3 px-4 rounded-lg font-bold tracking-wider hover:text-white transition-all text-xs md:text-sm">👾 SYSTEM MUTATOR</button>        </div>        <!-- MAIN LAYOUT GRID -->        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">                        <!-- LEFT PANEL (CONTROLS) -->            <div id="left-panel" class="lg:col-span-6 space-y-6 transition-all duration-300">                <!-- ========================================================= -->                <!-- TAB 1: MV GENERATOR -->                <!-- ========================================================= -->                <div id="section-generator" class="tab-content block space-y-6">                    <div class="text-sm font-bold text-cyan-400 border-b border-cyan-500/20 pb-1">1. SOURCE ASSETS</div>                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">                        <!-- AUDIO UPLOAD -->                        <div>                            <label class="block text-xs font-bold text-white mb-2">AUDIO FILE (.mp3, .wav, .m4a)</label>                            <div class="drop-zone rounded-lg p-4 text-center cursor-pointer border-2" id="audio-drop-zone">                                <span class="text-xs block text-cyan-400 font-mono" id="audio-file-name">DRAG & DROP OR CLICK</span>                                <input type="file" id="input-audio" accept="audio/*" class="hidden">                            </div>                        </div>                        <!-- LYRICS FILE (OPTIONAL) -->                        <div>                            <div class="flex justify-between items-center mb-2">                                <label class="text-xs font-bold text-white">LYRICS FILE (.srt, .txt)</label>                                <div id="aligner-apply-container" class="hidden items-center space-x-2 text-xs">                                    <input type="checkbox" id="toggle-use-aligner-data" class="accent-fuchsia-500">                                    <span class="text-fuchsia-400 font-bold">TIMELINE BIND ACTIVE</span>                                </div>                            </div>                            <div class="drop-zone rounded-lg p-4 text-center cursor-pointer border-2" id="lyrics-drop-zone">                                <span class="text-xs block text-cyan-400 font-mono" id="lyrics-file-name">DRAG & DROP OR CLICK (.SRT/.TXT)</span>                                <input type="file" id="input-lyrics" accept=".srt,.txt" class="hidden">                            </div>                        </div>                    </div>                    <!-- BACKGROUND IMAGES / VIDEOS (FULL WIDTH) -->                    <div class="mt-4">                        <label class="block text-xs font-bold text-white mb-2">BACKGROUND IMAGES / VIDEOS (MULTI OK)</label>                        <div class="drop-zone rounded-lg p-4 text-center cursor-pointer border-2" id="assets-drop-zone">                            <span class="text-xs block text-cyan-400 font-mono" id="assets-count">DRAG & DROP OR CLICK</span>                            <input type="file" id="input-assets" accept="image/*,video/*" multiple class="hidden">                        </div>                        <div id="assets-list-container" class="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2 max-h-[220px] overflow-y-auto p-2 bg-black/40 border border-cyan-500/10 rounded hidden">
+</div>                    </div>                    <button class="w-full py-3 bg-cyan-950/40 border border-cyan-500 text-cyan-400 rounded-lg font-bold text-xs tracking-widest hover:bg-cyan-500 hover:text-black transition-all mb-4" id="btn-toggle-generator-settings">                        ⚙️ SHOW DETAILED CONFIGURATION                    </button>                        <!-- CHECKS -->                        <div>                            <span class="block text-xs font-bold text-white mb-2">BIOMETRIC OVERLAY (OPENCV)</span>                            <div class="flex gap-4">                                <label class="flex items-center space-x-2 text-xs text-cyan-300 cursor-pointer">                                    <input type="checkbox" id="enable-ecg" checked class="accent-cyan-500"> <span>ECG (心電図)</span>                                </label>                                <label class="flex items-center space-x-2 text-xs text-cyan-300 cursor-pointer">                                    <input type="checkbox" id="enable-grf" checked class="accent-cyan-500"> <span>GRF (床反力)</span>                                </label>                                <label class="flex items-center space-x-2 text-xs text-cyan-300 cursor-pointer">                                    <input type="checkbox" id="enable-hexdump" checked class="accent-cyan-500"> <span>HEXDUMP</span>                                </label>                            </div>                        </div>                        <!-- AI ORCHESTRATION & KINETIC LYRIC -->                        <div class="border-t border-cyan-500/20 pt-3">                            <span class="block text-xs font-bold text-white mb-2">AI MUSIC & LYRIC ORCHESTRATION</span>                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">                                <div class="space-y-2">                                    <label class="flex items-center space-x-2 text-xs text-cyan-300 cursor-pointer">                                        <input type="checkbox" id="enable-ai-orchestration" class="accent-cyan-500">                                        <span class="font-bold text-cyan-400">🎸 AI自動エフェクト連携</span>                                    </label>                                    <span class="block text-[10px] text-gray-500">※楽曲展開をAIが解析し、BPM/エネルギーに合わせてエフェクト強弱を自動設計します。</span>                                </div>                                <div class="space-y-2">                                    <label class="flex items-center space-x-2 text-xs text-cyan-300 cursor-pointer">                                        <input type="checkbox" id="enable-kinetic-lyric" checked class="accent-cyan-500">                                        <span class="font-bold text-cyan-400">👾 キネティック/グリッチ歌詞</span>                                    </label>                                    <div class="flex items-center space-x-2 mt-1">                                        <span class="text-[10px] text-gray-400">STYLE:</span>                                        <select id="lyric-effect-style" class="bg-black border border-cyan-500 text-cyan-300 text-[10px] rounded p-1 w-full focus:outline-none">                                            <option value="SIMPLE">SIMPLE FLAT (標準)</option>                                            <option value="KINETIC_BOUNCE">BEAT PUMPING (リズム弾み)</option>                                            <option value="GLITCH">GLITCH & SLICE (グリッチノイズ)</option>                                            <option value="CHROME_RGB">CHROMATIC RGB (色収差色ズレ)</option>                                            <option value="NEON_GLOW">NEON GLOW (ネオン発光)</option>                                        </select>                                    </div>                                </div>                            </div>                        </div>                    <div id="generator-settings-panel" class="hidden space-y-4 bg-black/60 p-4 border border-cyan-500/20 rounded-lg">                        <!-- GEMINI API KEY CONFIG -->                        <div class="border-b border-cyan-500/20 pb-3">                            <div class="flex justify-between items-center mb-1">                                <label class="text-xs font-bold text-cyan-300 flex items-center gap-1">                                    <span>🔑 GEMINI API KEY CONFIG</span>                                </label>                                <button id="btn-clear-api-key" type="button" class="text-[9px] border border-red-500/40 text-red-400 px-2 py-0.5 rounded hover:bg-red-500 hover:text-black transition-all">CLEAR KEY</button>                            </div>                            <input type="password" id="api-key-input" placeholder="AIzaSy..."                                 class="w-full bg-black border border-cyan-500/60 text-green-400 text-xs p-2 rounded focus:outline-none focus:border-cyan-400 font-mono">                            <div id="api-key-preview" class="text-[9px] text-gray-400 font-mono mt-1">Active Key: None (環境変数 GEMINI_API_KEY が定義されている場合は自動的に優先利用されます)</div>                        </div>                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">                            <div>                                <label class="block text-xs font-bold text-white mb-1">ASPECT RATIO</label>                                <select id="aspect-select" class="bg-black border border-cyan-500 text-cyan-300 text-xs rounded p-2 w-full">                                    <option value="16:9">16:9 (HORIZONTAL)</option>                                    <option value="9:16">9:16 (VERTICAL)</option>                                </select>                            </div>                            <div>                                <label class="block text-xs font-bold text-white mb-1">FRAME RATE (FPS)</label>                                <select id="fps-select" class="bg-black border border-cyan-500 text-cyan-300 text-xs rounded p-2 w-full">                                    <option value="30" selected>30 FPS (STANDARD)</option>                                    <option value="24">24 FPS (CINEMATIC)</option>                                    <option value="60">60 FPS (HIGH SMOOTH)</option>                                </select>                            </div>                            <div>                                <label class="block text-xs font-bold text-white mb-1">VIDEO ENCODER</label>                                <select id="video-encoder" class="bg-black border border-cyan-500 text-cyan-300 text-xs rounded p-2 w-full">                                    <option value="libx264">CPU (libx264 - 標準)</option>                                    <option value="h264_nvenc">NVIDIA GPU (h264_nvenc - 高速)</option>                                </select>                            </div>                            <div>                                <label class="block text-xs font-bold text-white mb-1">PRIMARY AI MODEL</label>                                <select id="primary-model" class="bg-black border border-cyan-500 text-cyan-300 text-xs rounded p-2 w-full">                                    <option value="gemini-3.5-flash">GEMINI 3.5 FLASH</option>                                    <option value="gemini-3.1-flash-lite">GEMINI 3.1 FLASH LITE</option>                                </select>                            </div>                        </div>                        <!-- CHECKS -->                        <div>                            <span class="block text-xs font-bold text-white mb-2">BIOMETRIC OVERLAY (OPENCV)</span>                            <div class="flex gap-4">                                <label class="flex items-center space-x-2 text-xs text-cyan-300 cursor-pointer">                                    <input type="checkbox" id="enable-ecg" checked class="accent-cyan-500"> <span>ECG (心電図)</span>                                </label>                                <label class="flex items-center space-x-2 text-xs text-cyan-300 cursor-pointer">                                    <input type="checkbox" id="enable-grf" checked class="accent-cyan-500"> <span>GRF (床反力)</span>                                </label>                                <label class="flex items-center space-x-2 text-xs text-cyan-300 cursor-pointer">                                    <input type="checkbox" id="enable-hexdump" checked class="accent-cyan-500"> <span>HEXDUMP</span>                                </label>                            </div>                        </div>                        <!-- SLIDERS -->                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">                            <div>                                <div class="flex justify-between text-xs font-bold mb-1">                                    <span>PIXEL MELT INTENSITY</span>                                    <span id="max-melt-val" class="text-cyan-400">1.0</span>                                </div>                                <input type="range" id="max-melt" min="0.0" max="3.0" step="0.1" value="1.0" class="w-full accent-cyan-500">                            </div>                            <div>                                <div class="flex justify-between text-xs font-bold mb-1">                                    <span>GLITCH FREQUENCY</span>                                    <span id="glitch-freq-val" class="text-cyan-400">1.0</span>                                </div>                                <input type="range" id="glitch-freq" min="0.0" max="3.0" step="0.1" value="1.0" class="w-full accent-cyan-500">                            </div>                        </div>                        <!-- SUBTITLE COLOR & FONT STYLE -->                        <div class="grid grid-cols-2 gap-4">                            <div>                                <label class="block text-[10px] font-bold text-white mb-1">HARD-SUB COLOR</label>                                <select id="subtitle-color" class="bg-black border border-cyan-500 text-cyan-300 text-[11px] rounded p-2 w-full">                                    <option value="pure_white" selected>PURE WHITE</option>                                    <option value="cyan_magenta">CYAN / MAGENTA</option>                                    <option value="green_cyan">GREEN / CYAN</option>                                    <option value="magenta_green">MAGENTA / GREEN</option>                                    <option value="white_cyan">WHITE / CYAN</option>                                </select>                            </div>                            <div>                                <label class="block text-[10px] font-bold text-white mb-1">FONT STYLE</label>                                <select id="subtitle-font" class="bg-black border border-cyan-500 text-cyan-300 text-[11px] rounded p-2 w-full">                                    <option value="gothic" selected>GOTHIC (ゴシック体)</option>                                    <option value="mincho">MINCHO (明朝体)</option>                                </select>                            </div>                        </div>                        <!-- TEMPO SYNCHRONIZATION -->                        <div class="border-t border-cyan-500/20 pt-3">                            <span class="block text-xs font-bold text-white mb-2">BPM & TEMPO SYNC</span>                            <div class="grid grid-cols-2 gap-4 mb-2">                                <div>                                    <label class="block text-[10px] text-gray-400">BPM (tempo)</label>                                    <input type="number" id="config-bpm" min="30" max="300" step="0.01" value="120.00" class="bg-black border border-cyan-500 text-cyan-400 text-xs p-2 rounded w-full">                                </div>                                <div>                                    <label class="block text-[10px] text-gray-400">OFFSET (sec)</label>                                    <input type="number" id="config-bpm-offset" min="0" max="60" step="0.001" value="0.000" class="bg-black border border-cyan-500 text-cyan-400 text-xs p-2 rounded w-full">                                </div>                            </div>                            <button class="w-full py-2 bg-purple-950/20 border border-purple-500 text-purple-400 rounded font-bold text-xs hover:bg-purple-500 hover:text-black transition-all mb-2" id="btn-analyze-bpm" type="button">                                ⚡ DETECT BPM AUTOMATICALLY FROM AUDIO                            </button>                            <div class="grid grid-cols-1 gap-2">                                <div>                                    <label class="block text-[10px] text-gray-400">SLIDES CHANGEOVER RATE (小節数)</label>                                    <input type="number" id="slide-measures" min="1" max="16" value="4" class="bg-black border border-cyan-500 text-cyan-400 text-xs p-2 rounded w-full">                                </div>                                <div id="slide-preview-text" class="text-[10px] text-cyan-400/80 font-mono mt-1">
+</div>                            </div>                        </div>                    </div>                    <!-- Python AI Filter Code Block (ai_filters.json 自動ロード常時表示) -->
+                    <div class="p-4 bg-gray-955 border border-purple-500/30 rounded-lg space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-purple-400">🐍 BACKEND PYTHON AI FILTER (OPENCV)</span>
+                            <div class="flex space-x-2">
+                                <button id="btn-save-current-py-filter" class="text-[10px] border border-purple-500/40 text-purple-300 px-2 py-0.5 rounded bg-purple-950/30 hover:bg-purple-900/60 font-bold transition-all">SAVE</button>
+                            </div>
+                        </div>
+                        
+                        <!-- 起動時に ai_filters.json から自動読み込み展開されるフィルターマルチ選択パネル -->
+                        <div id="saved-py-filters-dropdown-container" class="bg-black/90 border border-purple-500/40 rounded-lg p-3 space-y-2.5">
+                            <div class="flex justify-between items-center pb-2 border-b border-purple-500/20">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-xs font-bold text-purple-300">🧬 FILTER EXECUTION MODE:</span>
+                                    <label class="flex items-center gap-1 cursor-pointer text-xs" title="単発1: 曲調や音圧エネルギーに応じて適宜切り替え">
+                                        <input type="radio" name="filter-exec-mode" value="single1" class="accent-purple-500 cursor-pointer" />
+                                        <span class="text-cyan-300 font-bold">🎯 SINGLE 1 (適応)</span>
+                                    </label>
+                                    <label class="flex items-center gap-1 cursor-pointer text-xs" title="単発2: 設定されたBPMと小節切り替え時間ぴったりに順次切り替え">
+                                        <input type="radio" name="filter-exec-mode" value="single2" class="accent-purple-500 cursor-pointer" />
+                                        <span class="text-emerald-300 font-bold">🎯 SINGLE 2 (小節時間同期)</span>
+                                    </label>
+                                    <label class="flex items-center gap-1 cursor-pointer text-xs" title="複合: 選択されたフィルターをすべて重ね合わせ">
+                                        <input type="radio" name="filter-exec-mode" value="multi" class="accent-purple-500 cursor-pointer" checked />
+                                        <span class="text-fuchsia-300 font-bold">🧬 MULTI (複合)</span>
+                                    </label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <label class="flex items-center gap-1.5 cursor-pointer text-xs bg-purple-950/60 hover:bg-purple-900 border border-purple-500/40 hover:border-purple-400 px-2.5 py-1 rounded transition-all shadow" title="すべてのフィルターを一括で全選択/全解除">
+                                        <input type="checkbox" id="chk-select-all-filters" class="accent-purple-500 cursor-pointer w-4 h-4" />
+                                        <span class="font-bold text-[11px] text-cyan-300">☑ 全選択 (ALL)</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div id="saved-py-filters-list" class="max-h-52 overflow-y-auto space-y-1.5 pr-1 text-xs">
+                                <!-- JS で動的生成: チェックボックス + フィルター名 + EDIT + DELETE -->
+                            </div>
+                        </div>
+
+                        <!-- プロンプト入力欄 -->
+                        <textarea id="ai-py-prompt" rows="2" placeholder="例: シアンとマゼンタのグリッドノイズを走らせ、BPMビートで画面を左右に揺らすエフェクト" 
+                            class="w-full bg-black border border-purple-500/40 rounded p-2 text-xs text-purple-300 focus:outline-none resize-none leading-normal"></textarea>
+                        
+                        <!-- アクションボタン群 (GENERATE / TRANSLATE / VIEW/EDIT) -->
+                        <div class="grid grid-cols-3 gap-2">
+                            <button id="btn-generate-py-filter" class="py-2 bg-purple-900/40 border border-purple-500 text-purple-300 font-bold rounded text-xs hover:bg-purple-800 hover:text-white transition-all flex justify-center items-center">
+                                <span>GENERATE</span>
+                            </button>
+                            <button id="btn-import-from-asset-factory" class="py-2 bg-fuchsia-950/40 border border-fuchsia-500 text-fuchsia-300 font-bold rounded text-xs hover:bg-fuchsia-800 hover:text-white transition-all flex justify-center items-center">
+                                <span>🧬 TRANSLATE</span>
+                            </button>
+                            <button id="btn-toggle-py-editor" class="py-2 bg-gray-900 border border-gray-700 text-gray-300 font-bold rounded text-xs hover:bg-gray-800 transition-all flex justify-center items-center">
+                                <span>VIEW/EDIT</span>
+                            </button>
+                        </div>
+
+                        <!-- コードエディタ領域 (VIEW/EDIT ボタンでトグル表示) -->
+                        <div id="py-editor-container" class="hidden space-y-2">
+                            <textarea id="py-filter-editor" rows="9" placeholder="Python OpenCV コードを直接記述してください。&#10;def apply_ai_filter(frame, t, duration, bpm, energy):&#10;    return frame" class="w-full bg-black text-green-400 font-mono text-[10px] p-2.5 border border-purple-500/40 rounded focus:outline-none leading-normal"></textarea>
+                            
+                            <div class="flex gap-2">
+                                <button id="btn-preview-py-filter" class="flex-1 py-2 bg-cyan-950/40 border border-cyan-500 text-cyan-300 hover:bg-cyan-500 hover:text-black rounded text-xs font-bold transition-all flex items-center justify-center gap-1">
+                                    <span>👁️ PREVIEW FILTER</span>
+                                </button>
+                                <button id="btn-auto-repair-editor" class="flex-1 py-2 bg-red-950/40 border border-red-500/50 text-red-300 hover:bg-red-500 hover:text-black rounded text-xs font-bold transition-all flex items-center justify-center gap-1" title="プレビューエラー発生時、エラーログを参照してAIがコード表示欄のコードを自動修正します">
+                                    <span>🔧 FIX PREVIEW ERROR</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="py-status" class="text-[10px] text-gray-500 text-center h-2"></div>
+                    </div>                    <!-- BINDING TEXT BANNER -->                    <div class="editor-status-banner border border-green-500/30 bg-green-500/5 text-green-400 text-xs p-3 rounded-lg flex items-center justify-between" id="aligner-link-banner" style="display: none;">                        <span class="font-bold">🟢 SRT TIMELINE ALIGNMENT BIND ACTIVE: 編集済みのタイミングを動画生成に適用します。</span>                    </div>                    <!-- PROJECT ZIP EXPORT/IMPORT SECTION -->                    <div class="p-4 bg-gray-955 border border-cyan-500/30 rounded-lg space-y-3">                        <span class="text-xs font-bold text-cyan-400">📦 PROJECT BACKUP (プロジェクトZIP保存 / 復元)</span>                        <div class="grid grid-cols-2 gap-3">                            <button id="btn-export-project" class="py-2.5 bg-cyan-950/40 border border-cyan-500 text-cyan-300 font-bold rounded text-xs hover:bg-cyan-500 hover:text-black transition-all flex justify-center items-center gap-1.5">                                <span>📦 EXPORT ZIP</span>                            </button>                            <button id="btn-import-project" class="py-2.5 bg-fuchsia-950/40 border border-fuchsia-500 text-fuchsia-300 font-bold rounded text-xs hover:bg-fuchsia-500 hover:text-black transition-all flex justify-center items-center gap-1.5">                                <span>📥 IMPORT ZIP</span>                            </button>                            <input type="file" id="input-import-project" accept=".zip" class="hidden">                        </div>                    </div>                    <!-- GENERATION BUTTON -->                    <button class="w-full py-4 bg-gradient-to-r from-cyan-600 to-fuchsia-600 hover:from-cyan-500 hover:to-fuchsia-500 text-white font-black font-mono tracking-widest text-sm rounded-lg hover:shadow-[0_0_20px_rgba(0,243,255,0.4)] transition-all uppercase" id="btn-generate">                        GENERATE AUTOMATED MV                    </button>                </div>                <!-- ========================================================= -->                <!-- TAB 2: AI ASSET FACTORY (CANVAS ENGINE) -->                <!-- ========================================================= -->                <div id="section-asset" class="tab-content hidden space-y-6">                                        <div class="grid grid-cols-2 gap-4">                        <div>                            <label class="block text-xs font-bold text-cyan-400 mb-1">SOURCE MODE</label>                            <div class="grid grid-cols-2 gap-2" id="source-mode-btns">                                <button data-val="VIDEO" class="py-2 bg-cyan-500/20 border border-cyan-400 text-white rounded text-xs font-bold">📹 VIDEO</button>                                <button data-val="DURATION" class="py-2 bg-gray-900 border border-gray-700 text-gray-500 rounded text-xs font-bold">⏱️ DURATION</button>                            </div>                        </div>                        <div>                            <label class="block text-xs font-bold text-cyan-400 mb-1">ASPECT RATIO</label>                            <div class="grid grid-cols-2 gap-2" id="canvas-aspect-btns">                                <button data-val="9:16" class="py-2 bg-cyan-500/20 border border-cyan-400 text-white rounded text-xs font-bold">9:16 (VERTICAL)</button>                                <button data-val="16:9" class="py-2 bg-gray-900 border border-gray-700 text-gray-500 rounded text-xs font-bold">16:9 (HORIZONTAL)</button>                            </div>                        </div>                    </div>                    <!-- DYNAMIC INPUT CONFIG -->                    <div class="p-3 bg-gray-950 border border-cyan-500/20 rounded-lg">                        <div id="canvas-video-panel" class="space-y-3">                            <input type="file" id="canvas-video-upload" accept="video/*"                                 class="w-full text-xs text-gray-400 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-bold file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20 transition-all cursor-pointer border border-dashed border-cyan-500/30 p-2 rounded"                            />                            <div class="grid grid-cols-2 gap-2">                                <button id="btn-outmode-combined" class="py-1.5 bg-cyan-500/20 border border-cyan-400 text-white rounded text-[10px] font-bold">COMBINED (合成)</button>                                <button id="btn-outmode-overlay" class="py-1.5 bg-gray-900 border border-gray-700 text-gray-500 rounded text-[10px] font-bold">OVERLAY ONLY (黒背景)</button>                            </div>                        </div>                                                <div id="canvas-duration-panel" class="space-y-1 hidden">                            <label class="block text-[10px] text-gray-400">GENERATION TIME (SECONDS)</label>                            <input type="number" id="canvas-duration-input" step="0.5" min="0.5" max="60" value="3.0"                                class="w-full bg-black border border-cyan-500/50 rounded p-2 text-cyan-400 focus:outline-none focus:border-cyan-400 transition-all text-xs"                            />                        </div>                    </div>                    <!-- OVERLAY TYPE SELECTOR -->                    <div>                        <label class="block text-xs font-bold text-cyan-400 mb-2">UI OVERLAY TYPE</label>                        <div class="flex space-x-1 mb-3 bg-gray-950 p-1 rounded border border-gray-800 overflow-x-auto" id="category-tabs">
 </div>                        <div class="grid grid-cols-1 gap-2 pl-2 border-l-2 border-cyan-500/30 overflow-y-auto h-36 pr-2" id="overlay-items">
 </div>                    </div>                    <!-- CUSTOM TEXT -->                    <div class="grid grid-cols-1 gap-2">                        <label class="block text-xs font-bold text-cyan-400">CUSTOM TEXT (Kinetic / Glitch Overlay)</label>                        <input type="text" id="custom-text-input"                             class="w-full bg-black border border-cyan-500/30 rounded p-2 text-cyan-400 focus:outline-none focus:border-cyan-400 transition-all text-xs font-mono"                            value="WARNING: 虚圏 (KOKEN) 展開"                        />                        <div class="flex justify-between items-center text-[10px]">                            <span class="text-gray-500">TEXT SOURCE:</span>                            <div class="flex space-x-1" id="canvas-text-mode-btns">                                <button data-val="CUSTOM" class="py-0.5 px-2 bg-cyan-500/20 border border-cyan-400 text-white rounded text-[9px] font-bold">CUSTOM</button>                                <button data-val="DEFAULT" class="py-0.5 px-2 bg-gray-900 border border-gray-700 text-gray-500 rounded text-[9px] font-bold">DEFAULT</button>                            </div>                        </div>                    </div>                    <!-- JS AI ASSET FACTORY (SELF-REPLICATION MODULE) -->                    <div class="p-4 bg-gray-950 border border-fuchsia-500/40 rounded-lg shadow-[0_0_15px_rgba(217,70,239,0.05)] relative overflow-hidden">                        <div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-fuchsia-500 to-cyan-500">
 </div>                                                <div class="flex items-center justify-between text-xs font-bold mb-3 text-fuchsia-400">                            <span class="flex items-center">🧠 JS CANVAS AI ASSET FACTORY (CODE INJECTION)</span>                            <div class="flex space-x-2 items-center text-[9px]">                                <button id="ai-format-btn" class="border border-fuchsia-500/30 px-2 py-0.5 rounded bg-fuchsia-950/20">FORMAT</button>                                <button id="clear-ai-btn" class="border border-fuchsia-500/30 px-2 py-0.5 rounded text-fuchsia-500/50">WIPE</button>                            </div>                        </div>                                                <textarea id="ai-prompt" rows="2" placeholder="例: マトリックス風のデジタルレイン。緑色のバイナリが上から下へストリーミングする。"                             class="w-full bg-black border border-fuchsia-500/30 rounded p-2 text-xs text-fuchsia-300 focus:outline-none resize-none mb-2 leading-normal">
@@ -466,18 +438,17 @@ width: 0%;">
 </div>                            <div id="timeline-playback-line" class="absolute h-full w-[2px] bg-yellow-400 shadow-[0_0_4px_#facc15]" style="left: 0%;">
 </div>                        </div>                        <audio id="aligner-audio-element">
 </audio>                    </div>                    <!-- TIMELINE ROWS -->                    <div class="space-y-2">                        <div class="flex justify-between items-center">                            <span class="text-xs font-bold text-white">SUBTITLE TIMELINE CELLS (歌詞タイミング調整)</span>                                                        <!-- 編集モード切り替えトグル -->                            <div class="flex items-center space-x-1 bg-black/60 border border-cyan-500/30 p-0.5 rounded-lg">                                <button id="mode-cell-btn" class="px-3 py-1 text-[10px] font-bold rounded-md transition-all bg-cyan-500 text-black" type="button">セル編集</button>                                <button id="mode-timeline-btn" class="px-3 py-1 text-[10px] font-bold rounded-md transition-all text-cyan-400 hover:text-white" type="button">タイムライン編集</button>                            </div>                            <!-- セル編集用のアクションボタン (セル編集モード時のみ表示) -->                            <div class="flex items-center space-x-4" id="cell-actions-wrapper">                                <button id="btn-add-subtitle" class="text-[10px] border border-cyan-500/40 text-cyan-300 px-2 py-0.5 rounded bg-cyan-950/30 hover:bg-cyan-900/60 font-bold transition-all flex items-center gap-1">                                    <span>➕ ADD SUBTITLE</span>                                </button>                                <label class="flex items-center space-x-2 text-xs text-cyan-400 cursor-pointer">                                    <input type="checkbox" id="toggle-aligner-follow" checked class="accent-cyan-500">                                    <span>🔊 PLAYBACK FOLLOW</span>                                </label>                            </div>                        </div>                        <!-- 1. セル編集モード時の歌詞リストコンテナ -->                        <div class="border border-cyan-500/30 rounded-lg p-3 max-h-[324px] overflow-y-auto bg-black/60 timeline-scroll-area" id="timeline-rows-container">                            <div class="text-center text-gray-600 mt-16 text-xs">                                NO LYRICS LOADED. PASTE RAW LYRICS IN THE TEXTAREA ABOVE AND GENERATE CELLS.                            </div>                        </div>                        <!-- 2. タイムライン編集モード用パネル (初期状態は非表示) -->                        <div id="timeline-editor-container" class="hidden border border-cyan-500/30 rounded-lg p-3 bg-black/80 space-y-3">                            <!-- タイムラインコントロール -->                            <div class="flex flex-wrap items-center gap-4 text-xs text-slate-300 border-b border-cyan-500/20 pb-2">                                <div class="flex items-center space-x-1">                                    <span class="text-[10px] text-cyan-400 font-bold">BPM:</span>                                    <input type="number" id="timeline-bpm" class="w-14 bg-black border border-cyan-500/30 px-1.5 py-0.5 rounded text-white text-center font-mono" value="120" min="40" max="250">                                </div>                                <div class="flex items-center space-x-1">                                    <span class="text-[10px] text-cyan-400 font-bold">解像度:</span>                                    <select id="timeline-resolution" class="bg-black border border-cyan-500/30 px-1.5 py-0.5 rounded text-white text-xs">                                        <option value="1">1拍</option>                                        <option value="0.5">1/2拍</option>                                        <option value="0.25" selected>1/4拍 (16分音符)</option>                                        <option value="0.125">1/8拍</option>                                    </select>                                </div>                                <label class="flex items-center space-x-1.5 cursor-pointer text-[10px] text-cyan-400 font-bold">                                    <input type="checkbox" id="timeline-snap" checked class="accent-cyan-500">                                    <span>スナップ</span>                                </label>                                <div class="flex items-center space-x-2 ml-auto">                                    <span class="text-[9px] text-cyan-400 font-bold">ズーム:</span>                                    <input type="range" id="timeline-zoom" min="10" max="200" value="60" class="w-20 accent-cyan-500">                                    <button id="btn-add-subtitle-timeline" class="text-[10px] border border-cyan-500/40 text-cyan-300 px-2 py-0.5 rounded bg-cyan-950/30 hover:bg-cyan-900/60 font-bold transition-all flex items-center gap-1 ml-4" type="button">                                        <span>➕ ADD SUBTITLE</span>                                    </button>                                </div>                            </div>                            <!-- タイムラインスクロール領域 -->                            <div id="timeline-editor-wrapper" class="w-full overflow-x-auto overflow-y-hidden bg-[#0a0a14] border border-cyan-500/20 rounded relative min-h-[250px] select-none">                                <div id="timeline-editor-tracks" class="relative h-full" style="width: 1000px;
-           width: 1000px;
 height: 250px;">                                    <!-- 小節ルーラーや歌詞ブロックなどは JS で動的生成 -->                                </div>                            </div>                        </div>                    </div>                                        <button class="w-full py-2 bg-black border border-fuchsia-500 text-fuchsia-400 rounded text-xs font-bold hover:bg-fuchsia-500 hover:text-white transition-all" id="btn-snap-bpm" type="button">                        ⚡ SNAP TIMECODES TO BPM GRID (BPM吸着)                    </button>                    <div class="grid grid-cols-2 gap-4 pt-2">                        <button class="py-3 bg-black border border-cyan-500 text-cyan-400 hover:bg-cyan-500 hover:text-black rounded text-xs font-bold transition-all" id="btn-export-srt">                            💾 EXPORT SRT FILE                        </button>                        <button class="py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold rounded text-xs hover:shadow-[0_0_10px_rgba(16,185,129,0.3)] transition-all" id="btn-bind-srt">                            🔗 BIND TIMECODES TO VIDEO GENERATION                        </button>                    </div>                </div>                <!-- ========================================================= -->                <!-- TAB 4: SYSTEM MUTATOR (SELF-REPLICATION) -->                <!-- ========================================================= -->                <div id="section-mutate" class="tab-content hidden space-y-6">                    <div class="p-4 bg-gray-950 border border-fuchsia-500/40 rounded-lg space-y-4">                        <div class="flex items-center text-xs font-bold text-fuchsia-400">                            👾 SYSTEM MUTATOR (AI SELF-EVOLUTION ENGINE)                        </div>                        <p class="text-[10px] text-gray-400 leading-relaxed">                            この機能は、Gemini APIを利用して、このアプリ自体のソースコード（PythonサーバーまたはHTMLフロントエンド）を書き換える「自己増殖・自己進化システム」です。                            プロンプトで機能の追加、UIの修正、デザインの変更、バグ修正などを直接指示できます。                        </p>                        <div>                            <label class="block text-xs font-bold text-white mb-2">SELECT EVOLUTION TARGET (書き換え対象ファイル)</label>                            <select id="mutate-target" class="bg-black border border-fuchsia-500/50 text-fuchsia-300 text-xs rounded p-2 w-full">                                <option value="index.html">index.html (フロントエンド UI / JS Canvasエフェクトコア)</option>                                <option value="main.py">main.py (バックエンド Python / FastAPI サーバー / MoviePy)</option>                            </select>                        </div>                        <div>                            <label class="block text-xs font-bold text-white mb-2">EVOLUTION INSTRUCTIONS (進化指示プロンプト)</label>                            <textarea id="mutate-prompt" rows="5" placeholder="例: タイトル表示の横にネオンの絵文字を追加し、タブボタンの丸みを少しシャープにリファクタリングして。"                                 class="w-full bg-black border border-fuchsia-500/30 rounded p-2 text-xs text-fuchsia-300 focus:outline-none resize-none leading-normal">
 </textarea>                        </div>                        <div class="p-3 bg-red-500/10 border border-red-500/30 rounded text-[10px] text-red-400 leading-normal">                            ⚠️ <strong>CAUTION:</strong> コードの自己書き換えを実行します。書き換え前に自動で <code>.bak</code> ファイルが生成されます。Pythonコードの構文エラーは自動チェックされ、エラーがあれば上書きされません。                        </div>                        <button id="btn-self-mutate" class="w-full py-4 bg-gradient-to-r from-fuchsia-600 to-purple-700 hover:from-fuchsia-500 hover:to-purple-600 text-white font-black tracking-widest text-xs rounded-lg hover:shadow-[0_0_15px_rgba(217,70,239,0.4)] transition-all uppercase">                            MUTATE SYSTEM (自律進化を実行)                        </button>                        <div id="mutate-status" class="text-xs text-center font-mono h-4">
 </div>                    </div>                </div>            </div>            <!-- RIGHT PANEL (PREVIEW & CONSOLE) -->            <div id="right-panel" class="lg:col-span-6 flex flex-col space-y-6">                                <!-- PREVIEW SCREEN -->                <div class="relative bg-black rounded-lg border-2 border-cyan-500/40 overflow-hidden flex items-center justify-center min-h-[400px] md:min-h-[500px]">                    <div id="waiting-msg" class="text-cyan-600 text-center p-8 animate-pulse font-bold font-mono">                        <span class="block text-4xl mb-2">⚡</span>                        WAITING FOR VIDEO OR CONFIG...                    </div>                                        <!-- Canvas for Asset Factory Rendering -->                    <canvas id="main-canvas" class="w-full h-full object-contain bg-black hidden">
 </canvas>                    <video id="source-video" class="hidden" preload="auto" playsinline loop muted>
 </video>                                        <div id="rec-indicator" class="hidden absolute top-4 right-4 flex items-center space-x-2 bg-black/80 px-3 py-1 rounded-full border border-red-500/50">                        <div class="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping">
-</div>                        <span class="text-red-500 text-[10px] font-bold tracking-widest font-mono">REC</span>                    </div>                    <!-- AI Code Display Editor Overlay (Browser JS Canvas) -->                    <div id="code-overlay" class="absolute bottom-4 left-4 right-4 bg-black/90 border border-fuchsia-500/50 rounded p-3 hidden z-10 flex flex-col space-y-2 shadow-lg">                        <div class="text-[10px] text-fuchsia-400 flex justify-between items-center border-b border-fuchsia-500/30 pb-1">                            <span class="font-bold">AI_ASSET VIEW /* LIVE_CODE (JS) */</span>                            <div class="flex items-center space-x-2">
-                                <button onclick="document.getElementById('code-overlay').classList.add('hidden')" class="text-gray-500 hover:text-white text-xs">✕</button>                            </div>                        </div>                        <textarea id="code-editor" readonly placeholder="選択したアセットのJavaScriptコードが表示されます（Free版では閲覧のみ可能です）" class="w-full h-32 bg-gray-900/60 text-gray-400 font-mono text-[10px] p-2 border border-gray-800 rounded focus:outline-none resize-none leading-normal cursor-default">
+</div>                        <span class="text-red-500 text-[10px] font-bold tracking-widest font-mono">REC</span>                    </div>                    <!-- AI Code Display Editor Overlay (Browser JS Canvas) -->                    <div id="code-overlay" class="absolute bottom-4 left-4 right-4 bg-black/90 border border-fuchsia-500/50 rounded p-3 hidden z-10 flex flex-col space-y-2 shadow-lg">                        <div class="text-[10px] text-fuchsia-400 flex justify-between items-center border-b border-fuchsia-500/30 pb-1">                            <span class="font-bold">AI_ASSET VIEW /* LIVE_CODE (JS) */</span>                            <div class="flex items-center space-x-2">                                <button onclick="document.getElementById('code-overlay').classList.add('hidden')" class="text-gray-500 hover:text-white text-xs">✕</button>                            </div>                        </div>                        <textarea id="code-editor" readonly placeholder="選択したアセットのJavaScriptコードが表示されます（Free版では閲覧のみ可能です）" class="w-full h-32 bg-gray-900/60 text-gray-400 font-mono text-[10px] p-2 border border-gray-800 rounded focus:outline-none resize-none leading-normal cursor-default">
 </textarea>                        <div id="editor-status" class="text-[9px] text-gray-500 h-2">
 </div>                    </div>                    <!-- Video Preview Pane (MoviePy Output) -->                    <div class="absolute inset-0 w-full h-full bg-black hidden flex-col items-center justify-center" id="preview-pane" style="z-index: 10000;">                        <video id="output-video" controls class="w-full h-full object-contain bg-black">
 </video>                    </div>                </div>                <!-- CONSOLE LOG PANEL -->                <div class="bg-black/90 border border-green-500/40 rounded-lg p-4 h-48 overflow-y-auto font-mono text-xs text-green-400 shadow-[0_0_10px_rgba(57,255,20,0.05)]" id="console-panel">                    <div class="console-line system">[SYSTEM] INTEGRATED PIPELINE TERMINAL BIND SUCCESSFUL. READY.</div>                </div>            </div>        </div>    </div>    
 <script>
+        
         previewPane = document.getElementById('preview-pane');
         alignerAudio = document.getElementById('aligner-audio-element');
         outputVideo = document.getElementById('output-video');
@@ -485,27 +456,31 @@ height: 250px;">                                    <!-- 小節ルーラーや�
         audioDropZone = document.getElementById('audio-drop-zone');
         inputAudio = document.getElementById('input-audio');
         audioFileName = document.getElementById('audio-file-name');
-        
-        const BUILTIN_PRESET_FILTERS = {};
-
+        lyricsDropZone = document.getElementById('lyrics-drop-zone');
+        inputLyrics = document.getElementById('input-lyrics');
+        lyricsFileName = document.getElementById('lyrics-file-name');
+        assetsDropZone = document.getElementById('assets-drop-zone');
+        inputAssets = document.getElementById('input-assets');
+    
+        /* PRESET FILTER & FILTER PREVIEW MANAGEMENT */
         const savedPyFiltersList = document.getElementById('saved-py-filters-list');
-        const btnToggleAllFilters = document.getElementById('chk-select-all-filters');
-        const btnSaveCurrentPyFilter = document.getElementById('btn-save-current-py-filter');
-        
+        const btnToggleAllFilters = document.getElementById('btn-toggle-all-filters');
         let loadedFiltersData = {};
-        let activeFilterChecks = {}; /* filterName -> boolean */
-        let currentEditingFilterName = "";
-
         function getApiUrl(endpoint) {
             if (window.location.protocol === 'file:') {
                 return 'http://localhost:8000' + endpoint;
             }
             return endpoint;
         }
+       const BUILTIN_PRESET_FILTERS = {};
+
+        let activeFilterChecks = {}; // filterName -> boolean
+        let currentEditingFilterName = "";
 
         async function loadPresetFilters() {
             if (!savedPyFiltersList) return;
             loadedFiltersData = {};
+
             try {
                 const res = await fetch(getApiUrl('/filters'));
                 if (res.ok) {
@@ -515,225 +490,390 @@ height: 250px;">                                    <!-- 小節ルーラーや�
             } catch(e) {
                 console.warn("Server filters fetch failed:", e);
             }
-            /* 初期化（すべてデフォルトでチェックOFF） */
+
+            // 初期化（すべてデフォルトでチェックOFF）
             Object.keys(loadedFiltersData).forEach(name => {
                 if (activeFilterChecks[name] === undefined) {
                     activeFilterChecks[name] = false;
                 }
             });
+
             renderFilterListUI();
         }
 
-        inputAssets = document.getElementById('input-assets');
-       function syncSelectAllCheckboxState() {
-           const chkSelectAll = document.getElementById('chk-select-all-filters');
-           if (!chkSelectAll) return;
-           const keys = Object.keys(loadedFiltersData);
-           if (keys.length === 0) {
-               chkSelectAll.checked = false;
-               return;
-           }
-           const allChecked = keys.length > 0 && keys.every(k => activeFilterChecks[k] === true);
-           chkSelectAll.checked = allChecked;
-       }
-       function renderFilterListUI() {
-           if (!savedPyFiltersList) return;
-           savedPyFiltersList.innerHTML = '';
-           Object.keys(loadedFiltersData).forEach(filterName => {
-               const isChecked = activeFilterChecks[filterName] === true;
-               const row = document.createElement('div');
-               row.className = 'flex items-center justify-between p-1.5 bg-gray-900/60 rounded border border-purple-500/20 hover:border-purple-500/50 transition-all';
-                               row.innerHTML = `                    <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-0 mr-2">                        <input type="checkbox" class="filter-chk accent-purple-500 w-4 h-4 cursor-pointer" data-name="${filterName}" ${isChecked ? 'checked' : ''}
-/>                        <span class="text-purple-200 truncate font-bold text-xs">🧬 ${filterName}</span>                    </label>                    <div class="flex gap-1">                        <button class="btn-edit-flt px-1.5 py-0.5 bg-purple-950/40 border border-purple-500/40 text-purple-300 hover:bg-purple-500 hover:text-black rounded text-[10px] font-bold transition-all" data-name="${filterName}">EDIT</button>                        <button class="btn-rename-flt px-1.5 py-0.5 bg-yellow-950/40 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500 hover:text-black rounded text-[10px] font-bold transition-all" data-name="${filterName}">✏️ RENAME</button>                        <button class="btn-del-flt px-1.5 py-0.5 bg-red-950/40 border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-black rounded text-[10px] font-bold transition-all" data-name="${filterName}">DEL</button>                    </div>                `;
-               savedPyFiltersList.appendChild(row);
-           });
-           /* イベントバインド */
+        function syncSelectAllCheckboxState() {
+            const chkSelectAll = document.getElementById('chk-select-all-filters');
+            if (!chkSelectAll) return;
+            const keys = Object.keys(loadedFiltersData);
+            if (keys.length === 0) {
+                chkSelectAll.checked = false;
+                return;
+            }
+            const allChecked = keys.length > 0 && keys.every(k => activeFilterChecks[k] === true);
+            chkSelectAll.checked = allChecked;
+        }
+
+        function renderFilterListUI() {
+            if (!savedPyFiltersList) return;
+            savedPyFiltersList.innerHTML = '';
+
+            Object.keys(loadedFiltersData).forEach(filterName => {
+                const isChecked = activeFilterChecks[filterName] === true;
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between p-1.5 bg-gray-900/60 rounded border border-purple-500/20 hover:border-purple-500/50 transition-all';
+                
+                row.innerHTML = `
+                    <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-0 mr-2">
+                        <input type="checkbox" class="filter-chk accent-purple-500 w-4 h-4 cursor-pointer" data-name="${filterName}" ${isChecked ? 'checked' : ''} />
+                        <span class="text-purple-200 truncate font-bold text-xs">🧬 ${filterName}</span>
+                    </label>
+                    <div class="flex gap-1">
+                        <button class="btn-edit-flt px-1.5 py-0.5 bg-purple-950/40 border border-purple-500/40 text-purple-300 hover:bg-purple-500 hover:text-black rounded text-[10px] font-bold transition-all" data-name="${filterName}">EDIT</button>
+                        <button class="btn-rename-flt px-1.5 py-0.5 bg-yellow-950/40 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500 hover:text-black rounded text-[10px] font-bold transition-all" data-name="${filterName}">✏️ RENAME</button>
+                        <button class="btn-del-flt px-1.5 py-0.5 bg-red-950/40 border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-black rounded text-[10px] font-bold transition-all" data-name="${filterName}">DEL</button>
+                    </div>
+                `;
+                savedPyFiltersList.appendChild(row);
+            });
+
+            // イベントバインド
             savedPyFiltersList.querySelectorAll('.filter-chk').forEach(chk => {
                 chk.addEventListener('change', (e) => {
                     const name = e.target.getAttribute('data-name');
-                   activeFilterChecks[name] = e.target.checked;
-                   syncSelectAllCheckboxState();
-                   console.log(`Filter '${name}' active: ${e.target.checked}`);
-               });
-           });
-           savedPyFiltersList.querySelectorAll('.btn-edit-flt').forEach(btn => {
-               btn.addEventListener('click', (e) => {
-                   const name = e.target.getAttribute('data-name');
-                   if (name && loadedFiltersData[name]) {
-                       const editorEl = document.getElementById('py-filter-editor');
-                       const container = document.getElementById('py-editor-container');
-                       if (editorEl) editorEl.value = loadedFiltersData[name];
-                       if (container) container.classList.remove('hidden');
-                                               currentEditingFilterName = name;
-                       console.log(`Editing filter: ${name}`);
-                   }
-               });
-           });
-           savedPyFiltersList.querySelectorAll('.btn-rename-flt').forEach(btn => {
-               btn.addEventListener('click', async (e) => {
-                   const oldName = e.target.getAttribute('data-name');
-                   if (!oldName) return;
-                   const newName = prompt(`フィルター '${oldName}' の新しい名前を入力してください:`, oldName);
-                   if (!newName || !newName.trim() || newName.trim() === oldName) return;
-                   const trimmedNewName = newName.trim();
-                   const formData = new FormData();
-                   formData.append('old_name', oldName);
-                   formData.append('new_name', trimmedNewName);
-                   try {
-                       const res = await fetch(getApiUrl('/rename_filter'), {
-method: 'POST', body: formData });
-                       const result = await res.json();
-                       if (res.ok && result.status === 'success') {
-                           if (result.filters) {
-                               loadedFiltersData = result.filters;
-                           }
-else {
-                               loadedFiltersData[trimmedNewName] = loadedFiltersData[oldName];
-                               delete loadedFiltersData[oldName];
-                           }
-                           if (activeFilterChecks[oldName] !== undefined) {
-                               activeFilterChecks[trimmedNewName] = activeFilterChecks[oldName];
-                               delete activeFilterChecks[oldName];
-                           }
-                           if (currentEditingFilterName === oldName) {
-                               currentEditingFilterName = trimmedNewName;
-                           }
-                           renderFilterListUI();
-                           addLog(`FILTER RENAMED: '${oldName}' -> '${trimmedNewName}'`, "system");
-                       }
-else {
-                           alert(`名前変更失敗: ${result.detail || 'エラーが発生しました'}`);
-                       }
-                   }
-catch (err) {
-                       alert(`通信エラー: ${err.message}`);
-                   }
-               });
-           });
-           savedPyFiltersList.querySelectorAll('.btn-del-flt').forEach(btn => {
-               btn.addEventListener('click', async (e) => {
-                   const name = e.target.getAttribute('data-name');
-                   if (!name) return;
-                   if (!confirm(`フィルター '${name}' を削除しますか？`)) return;
-                   const formData = new FormData();
-                   formData.append('name', name);
-                   try {
-                       const res = await fetch(getApiUrl('/delete-filter-code'), {
-method: 'POST', body: formData });
-                       const result = await res.json();
-                       if (res.ok && result.status === 'success') {
-                           alert(`フィルター '${name}' を削除しました。`);
-                           delete loadedFiltersData[name];
-                           delete activeFilterChecks[name];
-                           if (currentEditingFilterName === name) currentEditingFilterName = "";
-                           loadPresetFilters();
-                       }
-else {
-                           alert("削除に失敗しました: " + (result.error || result.message));
-                       }
-                   }
-catch(err) {
-                       alert("削除通信エラー: " + err.message);
-                   }
-               });
-           });
-           syncSelectAllCheckboxState();
-       }
-       const chkSelectAllFilters = document.getElementById('chk-select-all-filters');
-       if (chkSelectAllFilters) {
-           chkSelectAllFilters.addEventListener('change', (e) => {
-               const isChecked = e.target.checked;
-               Object.keys(loadedFiltersData).forEach(k => {
-                   activeFilterChecks[k] = isChecked;
-               });
-               renderFilterListUI();
-           });
-       }
-       /* チェックボックスがONになっている全フィルターのコードリストを返却（動画生成・書き出し用） */
-       function getActiveFilterCodes() {
-           const codes = [];
-           Object.keys(loadedFiltersData).forEach(name => {
-               if (activeFilterChecks[name] === true && loadedFiltersData[name]) {
-                   codes.push(loadedFiltersData[name]);
-               }
-           });
-           return codes;
-       }
-       /* プレビュー専用のコードリストを取得（エディタ表示中はエディタコード、非表示時はチェック中全コード） */
-       function getPreviewFilterCodes() {
-           const editorEl = document.getElementById('py-filter-editor');
-           const editorContainer = document.getElementById('py-editor-container');
-           const isEditorActive = editorContainer && !editorContainer.classList.contains('hidden');
-           const editorCode = (editorEl && isEditorActive) ? editorEl.value.trim() : "";
-           if (isEditorActive && editorCode) {
-               return [editorCode];
-           }
-           return getActiveFilterCodes();
-       }
-       if (btnSaveCurrentPyFilter) {
-           btnSaveCurrentPyFilter.addEventListener('click', async () => {
-               const editorEl = document.getElementById('py-filter-editor');
-               const code = editorEl ? editorEl.value : "";
-               if (!code.trim()) {
-                   alert("保存するPython AI Filterコードが空です。");
-                   return;
-               }
-               let saveName = "";
-               if (currentEditingFilterName) {
-                   const isOverwrite = confirm(`フィルター '${currentEditingFilterName}' を上書き保存しますか？\n\n[OK] = 既存フィルターを上書き保存\n[キャンセル] = 新しい名前で追加保存`);
-                   if (isOverwrite) {
-                       saveName = currentEditingFilterName;
-                   }
-               }
-               if (!saveName) {
-                   const inputName = prompt("保存するフィルター名を入力してください (例: LIQUID_SWIRL):", currentEditingFilterName || "MY_CUSTOM_FILTER");
-                   if (!inputName || !inputName.trim()) return;
-                   saveName = inputName.trim();
-               }
-               const formData = new FormData();
-               formData.append('name', saveName);
-               formData.append('code', code);
-               try {
-                   const res = await fetch(getApiUrl('/save_filter'), {
-method: 'POST', body: formData });
-                   const result = await res.json();
-                   if (res.ok) {
-                       alert(`フィルター '${saveName}' を正常に保存しました！`);
-                       currentEditingFilterName = saveName;
-                       loadPresetFilters();
-                   }
-else {
-                       alert("保存に失敗しました: " + (result.detail || result.message));
-                   }
-               }
-catch(e) {
-                   alert("保存通信エラー: " + e.message);
-               }
-           });
-       }
-       /* ========================================================= */
+                    activeFilterChecks[name] = e.target.checked;
+                    syncSelectAllCheckboxState();
+                });
+            });
+
+            savedPyFiltersList.querySelectorAll('.btn-edit-flt').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const name = e.target.getAttribute('data-name');
+                    if (name && loadedFiltersData[name]) {
+                        const editorEl = document.getElementById('py-filter-editor');
+                        const container = document.getElementById('py-editor-container');
+                        if (editorEl) editorEl.value = loadedFiltersData[name];
+                        if (container) container.classList.remove('hidden');
+                        
+                        currentEditingFilterName = name;
+                        activeFilterChecks[name] = true;
+                        renderFilterListUI();
+                    }
+                });
+            });
+
+            savedPyFiltersList.querySelectorAll('.btn-rename-flt').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const oldName = e.target.getAttribute('data-name');
+                    if (!oldName) return;
+
+                    const newName = prompt(`フィルター '${oldName}' の新しい名前を入力してください:`, oldName);
+                    if (!newName || !newName.trim() || newName.trim() === oldName) return;
+
+                    const trimmedNewName = newName.trim();
+                    const formData = new FormData();
+                    formData.append('old_name', oldName);
+                    formData.append('new_name', trimmedNewName);
+
+                    try {
+                        const res = await fetch(getApiUrl('/rename_filter'), { method: 'POST', body: formData });
+                        const result = await res.json();
+                        if (res.ok && result.status === 'success') {
+                            if (result.filters) {
+                                loadedFiltersData = result.filters;
+                            } else {
+                                loadedFiltersData[trimmedNewName] = loadedFiltersData[oldName];
+                                delete loadedFiltersData[oldName];
+                            }
+
+                            if (activeFilterChecks[oldName] !== undefined) {
+                                activeFilterChecks[trimmedNewName] = activeFilterChecks[oldName];
+                                delete activeFilterChecks[oldName];
+                            }
+
+                            if (currentEditingFilterName === oldName) {
+                                currentEditingFilterName = trimmedNewName;
+                            }
+
+                            renderFilterListUI();
+                            if (typeof addLog === 'function') addLog(`FILTER RENAMED: '${oldName}' -> '${trimmedNewName}'`, "system");
+                        } else {
+                            alert(`名前変更失敗: ${result.detail || 'エラーが発生しました'}`);
+                        }
+                    } catch (err) {
+                        alert(`通信エラー: ${err.message}`);
+                    }
+                });
+            });
+
+            savedPyFiltersList.querySelectorAll('.btn-del-flt').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const name = e.target.getAttribute('data-name');
+                    if (!name) return;
+                    if (!confirm(`フィルター '${name}' を削除しますか？`)) return;
+
+                    const formData = new FormData();
+                    formData.append('name', name);
+
+                    try {
+                        const res = await fetch(getApiUrl('/delete-filter-code'), { method: 'POST', body: formData });
+                        const result = await res.json();
+                        if (res.ok && result.status === 'success') {
+                            alert(`フィルター '${name}' を削除しました。`);
+                            delete loadedFiltersData[name];
+                            delete activeFilterChecks[name];
+                            if (currentEditingFilterName === name) currentEditingFilterName = "";
+                            loadPresetFilters();
+                        } else {
+                            alert("削除に失敗しました: " + (result.error || result.message));
+                        }
+                    } catch(err) {
+                        alert("削除通信エラー: " + err.message);
+                    }
+                });
+            });
+
+            syncSelectAllCheckboxState();
+        }
+
+        // V5 復元: Python AI Filter イベントハンドラー群 (SAVE / GENERATE / TRANSLATE / EDIT / REPAIR)
+        const pyFilterEditor = document.getElementById('py-filter-editor');
+        const pyEditorContainer = document.getElementById('py-editor-container');
+        const btnTogglePyEditor = document.getElementById('btn-toggle-py-editor');
+        const btnSaveCurrentPyFilter = document.getElementById('btn-save-current-py-filter');
+        const savedPyFiltersDropdownContainer = document.getElementById('saved-py-filters-dropdown-container');
+        const btnGeneratePy = document.getElementById('btn-generate-py-filter');
+        const btnImportFromAssetFactory = document.getElementById('btn-import-from-asset-factory');
+        const btnAutoRepairEditor = document.getElementById('btn-auto-repair-editor');
+        const pyStatus = document.getElementById('py-status');
+
+        // SAVE ボタン: 現在のフィルターコード保存 (V5 完全復元)
+        if (btnSaveCurrentPyFilter) {
+            btnSaveCurrentPyFilter.addEventListener('click', async () => {
+                const editorEl = document.getElementById('py-filter-editor');
+                const code = editorEl ? editorEl.value : "";
+                if (!code.trim()) {
+                    alert("保存するPython AI Filterコードが空です。");
+                    return;
+                }
+
+                let saveName = "";
+                if (currentEditingFilterName) {
+                    const isOverwrite = confirm(`フィルター '${currentEditingFilterName}' を上書き保存しますか？\n\n[OK] = 既存フィルターを上書き保存\n[キャンセル] = 新しい名前で追加保存`);
+                    if (isOverwrite) {
+                        saveName = currentEditingFilterName;
+                    }
+                }
+
+                if (!saveName) {
+                    const inputName = prompt("保存するフィルター名を入力してください (例: LIQUID_SWIRL):", currentEditingFilterName || "MY_CUSTOM_FILTER");
+                    if (!inputName || !inputName.trim()) return;
+                    saveName = inputName.trim().toUpperCase();
+                }
+
+                const formData = new FormData();
+                formData.append('name', saveName);
+                formData.append('code', code);
+
+                try {
+                    const res = await fetch(getApiUrl('/save_filter'), { method: 'POST', body: formData });
+                    const result = await res.json();
+                    if (res.ok && (result.status === 'success' || result.message)) {
+                        alert(`フィルター '${saveName}' を正常に保存しました！`);
+                        currentEditingFilterName = saveName;
+                        loadPresetFilters();
+                    } else {
+                        alert("保存に失敗しました: " + (result.detail || result.message));
+                    }
+                } catch(e) {
+                    alert("保存通信エラー: " + e.message);
+                }
+            });
+        }
+
+        // VIEW/EDIT ボタン: コードエディタのトグル表示
+        if (btnTogglePyEditor) {
+            btnTogglePyEditor.addEventListener('click', () => {
+                if (pyEditorContainer) {
+                    pyEditorContainer.classList.toggle('hidden');
+                }
+                if (typeof loadPresetFilters === 'function') {
+                    loadPresetFilters();
+                }
+            });
+        }
+
+        // GENERATE ボタン: プロンプトからのPython AIフィルター生成 (V5 完全復元)
+        if (btnGeneratePy) {
+            btnGeneratePy.addEventListener('click', async () => {
+                const promptInput = document.getElementById('ai-py-prompt');
+                const promptVal = promptInput ? promptInput.value.trim() : "";
+                if (!promptVal) {
+                    alert("生成プロンプトを入力してください。");
+                    return;
+                }
+                const apiKeyEl = document.getElementById('api-key-input');
+                const apiKey = apiKeyEl ? apiKeyEl.value.trim() : "";
+                const primaryModelEl = document.getElementById('primary-model');
+                const primaryModel = primaryModelEl ? primaryModelEl.value : "gemini-2.0-flash";
+
+                btnGeneratePy.disabled = true;
+                btnGeneratePy.innerText = "GENERATING...";
+                if (pyStatus) pyStatus.innerHTML = "<span class='text-purple-400 font-mono animate-pulse'>⚡ GENERATING PYTHON OPENCV FILTER VIA GEMINI AI...</span>";
+
+                try {
+                    const res = await fetch(getApiUrl('/generate-filter-code'), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            'prompt': promptVal,
+                            'api_key': apiKey,
+                            'primary_model': primaryModel
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.status === 'success' && data.code) {
+                        if (pyFilterEditor) pyFilterEditor.value = data.code;
+                        if (pyEditorContainer) pyEditorContainer.classList.remove('hidden');
+                        if (pyStatus) pyStatus.innerHTML = "<span class='text-green-400 font-mono'>[SUCCESS] PYTHON FILTER GENERATED SUCCESSFULLY</span>";
+                        if (typeof addLog === 'function') addLog("PYTHON AI FILTER GENERATED SUCCESSFULLY", "success");
+                        alert("プロンプトから Python (OpenCV) AI フィルターを生成しました！");
+                    } else {
+                        throw new Error(data.error || "Generation failed");
+                    }
+                } catch(err) {
+                    if (pyStatus) pyStatus.innerHTML = `<span class='text-red-500 font-mono'>[ERROR] ${err.message}</span>`;
+                    alert("フィルター生成失敗: " + err.message);
+                } finally {
+                    btnGeneratePy.disabled = false;
+                    btnGeneratePy.innerText = "GENERATE";
+                    setTimeout(() => { if (pyStatus) pyStatus.innerHTML = ""; }, 5000);
+                }
+            });
+        }
+
+        // 🧬 TRANSLATE ボタン: JS エフェクトコードの Python 自動翻訳 (V5 完全復元)
+        if (btnImportFromAssetFactory) {
+            btnImportFromAssetFactory.addEventListener('click', async () => {
+                let jsCode = "";
+                const aiPromptTextarea = document.getElementById('ai-prompt');
+                if (typeof ui !== 'undefined' && ui.codeEditor && ui.codeEditor.value.trim()) {
+                    jsCode = ui.codeEditor.value.trim();
+                } else if (aiPromptTextarea && aiPromptTextarea.value.trim()) {
+                    jsCode = aiPromptTextarea.value.trim();
+                }
+                if (!jsCode && typeof state !== 'undefined' && state.overlayType) {
+                    if (typeof savedAiEffects !== 'undefined' && Array.isArray(savedAiEffects)) {
+                        const effect = savedAiEffects.find(e => e.name === state.overlayType);
+                        if (effect && effect.code) jsCode = effect.code.trim();
+                    }
+                    if (!jsCode && typeof dynamicRenderers !== 'undefined' && dynamicRenderers[state.overlayType]) {
+                        jsCode = dynamicRenderers[state.overlayType].toString();
+                    }
+                }
+
+                if (!jsCode) {
+                    alert("AI Asset Factory に翻訳対象のエフェクトコードが見つかりません。\nAI Asset Factory でプロンプトを入力するかエフェクトを生成してから実行してください。");
+                    return;
+                }
+
+                const apiKeyEl = document.getElementById('api-key-input');
+                const apiKey = apiKeyEl ? apiKeyEl.value.trim() : "";
+                const primaryModelEl = document.getElementById('primary-model');
+                const primaryModel = primaryModelEl ? primaryModelEl.value : "gemini-2.0-flash";
+
+                btnImportFromAssetFactory.disabled = true;
+                btnImportFromAssetFactory.innerText = "TRANSLATING...";
+                if (pyStatus) pyStatus.innerHTML = "<span class='text-fuchsia-400 font-mono animate-pulse'>🧬 TRANSLATING JS EFFECT TO PYTHON OPENCV FILTER...</span>";
+
+                try {
+                    const res = await fetch(getApiUrl('/generate-filter-code'), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            'prompt': `Translate this JavaScript HTML5 Canvas visual effect code into a Python OpenCV video filter. Custom Python code MUST define the function process_frame(frame, t, duration, bpm, energy) or apply_ai_filter(frame, t, duration, bpm, energy) -> np.ndarray. Output ONLY raw python code without markdown ticks.\n\nJS CODE:\n${jsCode}`,
+                            'api_key': apiKey,
+                            'primary_model': primaryModel
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.status === 'success' && data.code) {
+                        if (pyFilterEditor) pyFilterEditor.value = data.code;
+                        if (pyEditorContainer) pyEditorContainer.classList.remove('hidden');
+                        if (pyStatus) pyStatus.innerHTML = "<span class='text-green-400 font-mono'>[SUCCESS] JS EFFECT TRANSLATED SUCCESSFULLY</span>";
+                        if (typeof addLog === 'function') addLog("TRANSLATED JS EFFECT TO PYTHON OPENCV FILTER", "success");
+                        alert("AI Asset Factory の JS エフェクトを Python (OpenCV) コードに自動翻訳しました！");
+                    } else {
+                        throw new Error(data.error || "Translation failed");
+                    }
+                } catch(err) {
+                    if (pyStatus) pyStatus.innerHTML = `<span class='text-red-500 font-mono'>[ERROR] ${err.message}</span>`;
+                    alert("自動翻訳失敗: " + err.message);
+                } finally {
+                    btnImportFromAssetFactory.disabled = false;
+                    btnImportFromAssetFactory.innerText = "🧬 TRANSLATE";
+                    setTimeout(() => { if (pyStatus) pyStatus.innerHTML = ""; }, 5000);
+                }
+            });
+        }
+        /* チェックボックスがONになっている全フィルターのコードリストを返却 */
+        function getActiveFilterCodes() {
+            const codes = [];
+            if (typeof loadedFiltersData !== 'undefined' && loadedFiltersData) {
+                Object.keys(loadedFiltersData).forEach(name => {
+                    if (typeof activeFilterChecks !== 'undefined' && activeFilterChecks[name] !== false && loadedFiltersData[name]) {
+                        codes.push(loadedFiltersData[name]);
+                    }
+                });
+            }
+            return codes;
+        }
+
+        /* プレビュー専用のコードリストを取得（エディタコード優先、無ければ有効フィルター、無ければ組み込みフィルター） */
+        function getPreviewFilterCodes() {
+            const editorEl = document.getElementById('py-filter-editor');
+            const editorCode = editorEl ? editorEl.value.trim() : "";
+            if (editorCode) {
+                return [editorCode];
+            }
+            const activeCodes = getActiveFilterCodes();
+            if (activeCodes.length > 0) {
+                return activeCodes;
+            }
+            if (typeof BUILTIN_PRESET_FILTERS !== 'undefined' && BUILTIN_PRESET_FILTERS) {
+                const firstKey = Object.keys(BUILTIN_PRESET_FILTERS)[0];
+                if (firstKey && BUILTIN_PRESET_FILTERS[firstKey]) {
+                    return [BUILTIN_PRESET_FILTERS[firstKey]];
+                }
+            }
+            return [];
+        }
+
+        /* ========================================================= */
         /* プレビューモーダル制御 & リアルタイムアニメーションループ */
         /* ========================================================= */
         let isPreviewPlaying = false;
         let previewTimer = null;
         let isPreviewFetching = false;
+        let lastPreviewErrorLog = ""; // プレビュー実行時の最新エラーログを記録
 
         async function fetchFilterPreview() {
             if (isPreviewFetching) return;
             isPreviewFetching = true;
             
             const activeCodes = getPreviewFilterCodes();
+            const spinner = document.getElementById('filter-preview-spinner');
+            const previewImg = document.getElementById('filter-preview-img');
+
             if (activeCodes.length === 0) {
                 if (!isPreviewPlaying) {
-                    alert("有効な Python AI Filter が選択されていません。チェックボックスをONにするか、エディタにコードを入力してください。");
+                    alert("有効な Python AI Filter が見つかりません。エディタにコードを入力してください。");
                 }
                 stopPreviewAnimation();
+                if (spinner) spinner.classList.add('hidden');
                 isPreviewFetching = false;
                 return;
             }
 
-            const spinner = document.getElementById('filter-preview-spinner');
-            const previewImg = document.getElementById('filter-preview-img');
             if (spinner && previewImg && previewImg.classList.contains('hidden')) {
                 spinner.classList.remove('hidden');
             }
@@ -764,6 +904,15 @@ catch(e) {
                     method: 'POST',
                     body: formData
                 });
+                
+                const isError = response.headers.get('X-Filter-Error');
+                const errorMsg = response.headers.get('X-Filter-Error-Message');
+
+                if (isError === 'true' || errorMsg) {
+                    lastPreviewErrorLog = errorMsg || "Filter execution error in /preview_filter";
+                    console.warn("[Preview Error Logged]:", lastPreviewErrorLog);
+                }
+
                 if (!response.ok) throw new Error("HTTP error " + response.status);
                 
                 const blob = await response.blob();
@@ -772,17 +921,106 @@ catch(e) {
                     previewImg.src = objectUrl;
                     previewImg.classList.remove('hidden');
                 }
+                if (spinner) {
+                    spinner.classList.add('hidden');
+                }
             } catch (err) {
                 console.error("Filter preview failed:", err);
-                if (!isPreviewPlaying) {
-                    alert("フィルタープレビューの生成に失敗しました: " + err.message);
-                }
+                lastPreviewErrorLog = err.message || "Preview execution failed.";
                 stopPreviewAnimation();
             } finally {
                 if (spinner) spinner.classList.add('hidden');
                 isPreviewFetching = false;
             }
         }
+
+        /* 🔧 AUTO REPAIR (プレビューエラー時のAI自動修復ハンドラー) */
+        async function repairEditorFilterCode() {
+            const pyEditor = document.getElementById('py-filter-editor');
+            const pyStatus = document.getElementById('py-status');
+            const btnEditorRepair = document.getElementById('btn-auto-repair-editor');
+            const btnModalRepair = document.getElementById('btn-auto-repair-filter');
+            
+            if (!pyEditor) return;
+            let currentCode = pyEditor.value.trim();
+            
+            // もしコード表示欄が空の場合は現在選択中のフィルターコードを参照
+            if (!currentCode) {
+                const activeCodes = getPreviewFilterCodes();
+                if (activeCodes.length > 0) {
+                    currentCode = activeCodes[0];
+                    pyEditor.value = currentCode;
+                }
+            }
+
+            if (!currentCode) {
+                alert("コード表示欄が空です。修正対象の Python AI Filter コードを入力してください。");
+                return;
+            }
+
+            const updateButtons = (loading) => {
+                if (btnEditorRepair) {
+                    btnEditorRepair.disabled = loading;
+                    btnEditorRepair.innerHTML = loading ? '<span>⏳ REPAIRING...</span>' : '<span>🔧 FIX PREVIEW ERROR</span>';
+                }
+                if (btnModalRepair) {
+                    btnModalRepair.disabled = loading;
+                    btnModalRepair.innerHTML = loading ? '<span>⏳ REPAIRING...</span>' : '<span>🔧 AUTO REPAIR (AI修復)</span>';
+                }
+            };
+
+            updateButtons(true);
+            if (pyStatus) pyStatus.innerText = "⚡ AIがプレビューエラーログを参照してコード表示欄のコードを修正中...";
+
+            const apiKeyEl = document.getElementById('api-key-input');
+            const apiKey = apiKeyEl ? apiKeyEl.value.trim() : "";
+            const primaryModelEl = document.getElementById('primary-model');
+            const primaryModel = primaryModelEl ? primaryModelEl.value : "gemini-2.0-flash";
+
+            const formData = new FormData();
+            formData.append('code', currentCode);
+            formData.append('error_log', lastPreviewErrorLog || "Preview runtime error");
+            formData.append('api_key', apiKey);
+            formData.append('primary_model', primaryModel);
+
+            try {
+                const res = await fetch(getApiUrl('/auto_repair_filter'), {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await res.json();
+
+                if (res.ok && result.status === 'success' && result.repaired_code) {
+                    pyEditor.value = result.repaired_code;
+                    const editorContainer = document.getElementById('py-editor-container');
+                    if (editorContainer) editorContainer.classList.remove('hidden');
+
+                    if (pyStatus) pyStatus.innerText = "✓ コード表示欄のコードを自動修復しました！";
+                    if (typeof addLog === 'function') addLog("FILTER AUTO-REPAIRED BY AI", "system");
+                    
+                    alert("✓ AIがエラーログを参照し、フィルターコードを自動修復しました！\n修正コードを反映してプレビューを再更新します。");
+                    
+                    // プレビュー画像を自動で再取得・再描画！
+                    fetchFilterPreview();
+                } else {
+                    alert("自動修復に失敗しました: " + (result.detail || result.error || "未知のエラー"));
+                    if (pyStatus) pyStatus.innerText = "❌ 自動修復エラー";
+                }
+            } catch (err) {
+                alert("修復通信エラー: " + err.message);
+                if (pyStatus) pyStatus.innerText = "❌ 通信エラー";
+            } finally {
+                updateButtons(false);
+            }
+        }
+
+        // イベントバインド
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-auto-repair-editor') || e.target.closest('#btn-auto-repair-filter')) {
+                repairEditorFilterCode();
+            }
+        });
+
 
         function startPreviewAnimation() {
             isPreviewPlaying = true;
@@ -829,6 +1067,7 @@ catch(e) {
                 const modal = document.getElementById('modal-filter-preview');
                 if (modal) {
                     modal.classList.remove('hidden');
+                    fetchFilterPreview();
                     startPreviewAnimation();
                 }
             }
@@ -1191,7 +1430,8 @@ else {
                                else if (ext === "mp4") mime = "video/mp4";
                                else if (ext === "mov") mime = "video/quicktime";
                                else if (ext === "webm") mime = "video/webm";
-                               const assetFile = new File([assetBlob], item.originalName, { type: mime });
+                                                               const assetFile = new File([assetBlob], item.originalName, {
+type: mime });
                                selectedAssets.push(assetFile);
                            }
                        }
@@ -1199,7 +1439,7 @@ else {
                                        if (typeof renderAssetsList === 'function') {
                        renderAssetsList();
                    }
-addLog(`${selectedAssets.length} VISUAL ASSETS RESTORED`, 'render');
+                   addLog(`${selectedAssets.length} VISUAL ASSETS RESTORED`, 'render');
                    /* 字幕ファイルの復元 */
                     let lyricsFileKey = null;
                    for (const [relativePath, fileObj] of Object.entries(zip.files)) {
@@ -1465,33 +1705,57 @@ finally {
             });
         }
 
-        // SRTファイルの読み込みと自動バインド設定用ヘルパー
+        // 歌詞ファイル(.srt, .txt)の読み込みと SRT Aligner への自動反映・バインドヘルパー
         function loadLyricsFileAndBind(file) {
             selectedLyrics = file;
             if (lyricsFileName) lyricsFileName.innerText = file.name.toUpperCase();
             addLog(`LYRICS LOADED: ${file.name.toUpperCase()}`, 'render');
 
-            // SRTファイルの場合は自動でパース・boundSrtText に設定し、タイムラインバインドを有効化
-            if (file.name.toLowerCase().endsWith('.srt')) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const srtText = ev.target.result;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const textContent = ev.target.result;
+                const fileNameLower = file.name.toLowerCase();
+
+                // SRT Aligner の原本テキスト入力欄にも自動設定
+                const rawLyricsInput = document.getElementById('raw-lyrics-input');
+                if (rawLyricsInput) {
+                    rawLyricsInput.value = textContent;
+                }
+
+                if (fileNameLower.endsWith('.srt')) {
+                    // SRTファイル: パースしてタイムラインセルに即時自動展開
                     if (typeof parseAndLoadSrt === 'function') {
-                        parseAndLoadSrt(srtText);
+                        parseAndLoadSrt(textContent);
                     }
                     if (typeof buildSrtString === 'function') {
                         boundSrtText = buildSrtString();
                     } else {
-                        // buildSrtString が未定義の場合は生テキストをそのまま使用
-                        boundSrtText = srtText;
+                        boundSrtText = textContent;
                     }
-                    // TIMELINE BIND ACTIVE チェックを自動ON
-                                        const toggleAligner = document.getElementById('toggle-use-aligner-data');
-                    if (toggleAligner) toggleAligner.checked = true;
+                    if (typeof addLog === 'function') addLog(`SRT ALIGNER AUTO-PARSED: ${file.name}`, 'system');
+                } else {
+                    // TXTテキストファイル: 原本テキストからベースセルを即時自動展開
+                    if (typeof parseAndLoadTxt === 'function') {
+                        parseAndLoadTxt(textContent);
+                    }
+                    if (typeof buildSrtString === 'function') {
+                        boundSrtText = buildSrtString();
+                    }
+                    if (typeof addLog === 'function') addLog(`TEXT LYRICS CONVERTED TO ALIGNER CELLS: ${file.name}`, 'system');
                 }
 
-                                reader.readAsText(file, 'utf-8');
-            }
+                // TIMELINE BIND ACTIVE チェックを自動ONにし、バインド状態バナーを表示
+                const toggleAligner = document.getElementById('toggle-use-aligner-data');
+                if (toggleAligner) toggleAligner.checked = true;
+
+                const alignerBanner = document.getElementById('aligner-apply-container');
+                if (alignerBanner) alignerBanner.classList.remove('hidden');
+
+                const linkBanner = document.getElementById('aligner-link-banner');
+                if (linkBanner) linkBanner.style.display = 'flex';
+            };
+
+            reader.readAsText(file, 'utf-8');
         }
 
         if (lyricsDropZone && inputLyrics) {
@@ -1514,21 +1778,22 @@ finally {
 
         /* BACKGROUND IMAGES / VIDEOS (MULTI OK) - アセットドロップ・マルチ追加・ドラッグ順序変更 */
         function renderAssetsList() {
-            const container = document.getElementById('assets-list-container') || assetsListContainer;
-            const countEl = document.getElementById('assets-count') || assetsCount;
+            const container = document.getElementById('assets-list-container');
             if (!container) return;
             container.innerHTML = '';
             
-            if (!selectedAssets || selectedAssets.length === 0) {
+            if (selectedAssets.length === 0) {
                 container.classList.add('hidden');
-                if (countEl) {
-                    countEl.innerText = "DRAG & DROP OR CLICK";
+                if (assetsCount) {
+                    assetsCount.innerText = "DRAG & DROP OR CLICK (MULTI OK)";
+                    assetsCount.classList.remove('file-selected');
                 }
                 return;
             }
             container.classList.remove('hidden');
-            if (countEl) {
-                countEl.innerText = `${selectedAssets.length} ASSET(S) MOUNTED (DRAG TO REORDER)`;
+            if (assetsCount) {
+                assetsCount.innerText = `${selectedAssets.length} ASSETS MOUNTED`;
+                assetsCount.classList.add('file-selected');
             }
 
             if (!dropPlaceholder) {
@@ -1568,7 +1833,7 @@ finally {
 
             selectedAssets.forEach((file, idx) => {
                 const item = document.createElement('div');
-                item.className = "relative bg-black/70 border border-cyan-500/40 rounded p-1.5 flex flex-col items-center justify-between text-[10px] cursor-grab active:cursor-grabbing transition-all duration-100 min-h-[85px] group hover:border-cyan-400";
+                item.className = "relative bg-cyan-950/20 border border-cyan-500/30 rounded p-1 flex flex-col items-center justify-between text-[10px] cursor-grab active:cursor-grabbing transition-all duration-100 min-h-[70px]";
                 item.dataset.index = idx;
                 item.draggable = true;
                 
@@ -1632,18 +1897,15 @@ finally {
                 const thumb = document.createElement('div');
                 thumb.className = "w-full h-12 bg-black/40 rounded overflow-hidden flex items-center justify-center mb-1 text-gray-500 font-mono text-[8px]";
                 
-                const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|ogg|mov|avi)$/i.test(file.name);
-                const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name);
-
-                if (isImage) {
+                if (file.type.startsWith('image/')) {
                     const img = document.createElement('img');
                     img.src = URL.createObjectURL(file);
-                    img.className = "w-full h-full object-cover pointer-events-none";
+                    img.className = "w-full h-full object-cover";
                     thumb.appendChild(img);
-                } else if (isVideo) {
+                } else if (file.type.startsWith('video/')) {
                     const video = document.createElement('video');
                     video.src = URL.createObjectURL(file);
-                    video.className = "w-full h-full object-cover pointer-events-none";
+                    video.className = "w-full h-full object-cover";
                     video.muted = true;
                     thumb.appendChild(video);
                 } else {
@@ -1654,13 +1916,12 @@ finally {
                 info.className = "w-full flex items-center justify-between text-[9px] font-mono text-cyan-300 px-0.5";
                 
                 const nameSpan = document.createElement('span');
-                nameSpan.className = "truncate max-w-[75px]";
+                nameSpan.className = "truncate max-w-[70px]";
                 nameSpan.title = file.name;
-                nameSpan.innerText = `${idx + 1}. ${file.name}`;
+                nameSpan.innerText = file.name;
                 
                 const delBtn = document.createElement('button');
-                delBtn.type = "button";
-                delBtn.className = "text-red-400 hover:text-red-200 hover:bg-red-900/40 rounded px-1 py-0.5 font-bold transition-all";
+                delBtn.className = "text-red-400 hover:text-red-300 font-bold px-1";
                 delBtn.innerText = "✕";
                 delBtn.onclick = (e) => {
                     e.stopPropagation();
@@ -1677,8 +1938,6 @@ finally {
             });
         }
 
-        window.renderAssetsList = renderAssetsList;
-
         function handleAssetsSelected(files) {
             const newFiles = Array.from(files);
             selectedAssets = selectedAssets.concat(newFiles);
@@ -1687,81 +1946,24 @@ finally {
         }
 
         if (assetsDropZone && inputAssets) {
-            assetsDropZone.addEventListener('click', (e) => {
-                if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
-                inputAssets.click();
-            });
-
+            assetsDropZone.addEventListener('click', () => inputAssets.click());
             inputAssets.addEventListener('change', (e) => {
-                if (e.target.files && e.target.files.length > 0) {
+                if (e.target.files.length > 0) {
                     handleAssetsSelected(e.target.files);
-                    inputAssets.value = '';
                 }
             });
-
             assetsDropZone.addEventListener('dragover', (e) => { e.preventDefault(); assetsDropZone.classList.add('dragover'); });
             assetsDropZone.addEventListener('dragleave', () => assetsDropZone.classList.remove('dragover'));
             assetsDropZone.addEventListener('drop', (e) => {
                 e.preventDefault();
                 assetsDropZone.classList.remove('dragover');
-                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                if (e.dataTransfer.files.length > 0) {
                     handleAssetsSelected(e.dataTransfer.files);
                 }
             });
         }
-
-
-        /* GEMINI API KEY LOCALSTORAGE MANAGEMENT */
-        const apiKeyInput = document.getElementById('api-key-input');
-        const btnClearApiKey = document.getElementById('btn-clear-api-key');
-        const apiKeyPreview = document.getElementById('api-key-preview');
-        const API_KEY_STORAGE = 'amvg_gemini_api_key';
-
-        function updateApiKeyPreview(val) {
-            if (!apiKeyPreview) return;
-            if (val) {
-                const masked = val.length > 8 ? val.substring(0, 6) + '...' + val.substring(val.length - 4) : '••••••••';
-                apiKeyPreview.innerHTML = `Active Key: <span class="text-green-400 font-bold font-mono">${masked}</span> (ブラウザに保存中)`;
-            } else {
-                apiKeyPreview.innerText = 'Active Key: None (環境変数 GEMINI_API_KEY が定義されている場合は自動的に優先利用されます)';
-            }
-        }
-
-        if (apiKeyInput) {
-            const savedKey = localStorage.getItem(API_KEY_STORAGE);
-            if (savedKey) {
-                apiKeyInput.value = savedKey;
-                updateApiKeyPreview(savedKey);
-            }
-
-            apiKeyInput.addEventListener('input', (e) => {
-                const val = e.target.value.trim();
-                if (val) {
-                    localStorage.setItem(API_KEY_STORAGE, val);
-                } else {
-                    localStorage.removeItem(API_KEY_STORAGE);
-                }
-                updateApiKeyPreview(val);
-            });
-        }
-
-        if (btnClearApiKey) {
-            btnClearApiKey.addEventListener('click', () => {
-                if (apiKeyInput) {
-                    apiKeyInput.value = '';
-                }
-                localStorage.removeItem(API_KEY_STORAGE);
-                updateApiKeyPreview('');
-                if (typeof addLog === 'function') {
-                    addLog('GEMINI API KEY CLEARED FROM STORAGE', 'system');
-                }
-            });
-        }
-
-        /* DETAILED CONFIGURATION PANEL TOGGLE & SLIDERS */
         const btnToggleGeneratorSettings = document.getElementById('btn-toggle-generator-settings');
         const generatorSettingsPanel = document.getElementById('generator-settings-panel');
-
 
         if (btnToggleGeneratorSettings && generatorSettingsPanel) {
             btnToggleGeneratorSettings.addEventListener('click', () => {
@@ -1841,9 +2043,11 @@ finally {
                 formData.append('glitch_freq', document.getElementById('glitch-freq')?.value || 1.0);
                 const subColor = document.getElementById('subtitle-color')?.value || "pure_white";
                 const subFont = document.getElementById('subtitle-font')?.value || "gothic";
+                const videoEncoder = document.getElementById('video-encoder')?.value || "libx264";
                 formData.append('subtitle_color', subColor);
                 formData.append('subtitle_font', subFont);
-                addLog(`SUBTITLE CONFIG LOADED: COLOR=${subColor}, FONT=${subFont.toUpperCase()}`, "system");
+                formData.append('video_encoder', videoEncoder);
+                addLog(`CONFIG LOADED: SUB_COLOR=${subColor}, FONT=${subFont.toUpperCase()}, ENCODER=${videoEncoder.toUpperCase()}`, "system");
 
                 formData.append('bpm', parseFloat(document.getElementById('config-bpm')?.value) || 120.0);
                 formData.append('bpm_offset', parseFloat(document.getElementById('config-bpm-offset')?.value) || 0.0);
@@ -1857,12 +2061,10 @@ finally {
                 formData.append('filter_exec_mode', execMode);
 
                 const activeCodes = (typeof getActiveFilterCodes === 'function') ? getActiveFilterCodes() : [];
-                formData.append('ai_filter_codes_json', JSON.stringify(activeCodes));
                 if (activeCodes.length > 0) {
+                    formData.append('ai_filter_codes_json', JSON.stringify(activeCodes));
                     formData.append('ai_filter_code', activeCodes[0]);
                     addLog(`ATTACHING ${activeCodes.length} ACTIVE PYTHON AI FILTERS...`, "system");
-                } else {
-                    addLog(`NO PYTHON AI FILTERS SELECTED (PASS-THROUGH MODE)`, "system");
                 }
 
                 try {
@@ -1923,26 +2125,56 @@ finally {
         }
 
         function srtTimeToSec(str) {
-            const parts = str.replace(',', '.').split(':');
-            return parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2]);
-        }
-
-        function buildSrtString() {
-            let srt = "";
-            activeSubtitleSegments.forEach((seg, idx) => {
-                srt += `${idx + 1}\n`;
-                srt += `${formatSrtTime(seg.start)} --> ${formatSrtTime(seg.end)}\n`;
-                srt += `${seg.text}\n\n`;
-            });
-            return srt;
+            if (!str) return 0.0;
+            const parts = str.trim().replace(',', '.').split(':');
+            if (parts.length < 3) return 0.0;
+            const hrs = parseFloat(parts[0]) || 0.0;
+            const mins = parseFloat(parts[1]) || 0.0;
+            const secs = parseFloat(parts[2]) || 0.0;
+            return hrs * 3600 + mins * 60 + secs;
         }
 
         function formatSrtTime(sec) {
-            const h = Math.floor(sec / 3600);
-            const m = Math.floor((sec % 3600) / 60);
-            const s = Math.floor(sec % 60);
-            const ms = Math.floor((sec % 1) * 1000);
+            if (isNaN(sec) || sec < 0) sec = 0.0;
+            const totalMs = Math.round(sec * 1000);
+            const h = Math.floor(totalMs / 3600000);
+            const m = Math.floor((totalMs % 3600000) / 60000);
+            const s = Math.floor((totalMs % 60000) / 1000);
+            const ms = totalMs % 1000;
             return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
+        }
+
+        function buildSrtString() {
+            if (!activeSubtitleSegments || activeSubtitleSegments.length === 0) return "";
+            
+            // タイムライン編集で順序が変わった場合でも、常に開始時間の昇順に自動完全ソート！
+            activeSubtitleSegments.sort((a, b) => {
+                if (Math.abs(a.start - b.start) > 0.0001) {
+                    return a.start - b.start;
+                }
+                return a.end - b.end;
+            });
+
+            let srt = "";
+            let idxCount = 1;
+
+            activeSubtitleSegments.forEach((seg) => {
+                const text = (seg.text || "").trim();
+                if (!text) return;
+
+                let startSec = parseFloat(seg.start) || 0.0;
+                let endSec = parseFloat(seg.end) || 0.0;
+
+                if (startSec < 0) startSec = 0.0;
+                if (endSec <= startSec) endSec = startSec + 0.5;
+
+                srt += `${idxCount}\n`;
+                srt += `${formatSrtTime(startSec)} --> ${formatSrtTime(endSec)}\n`;
+                srt += `${text}\n\n`;
+                idxCount++;
+            });
+
+            return srt;
         }
 
         function parseAndLoadTxt(text) {
@@ -1955,37 +2187,82 @@ finally {
                     id: idx + 1,
                     start: idx * 2.0,
                     end: (idx + 1) * 2.0,
-                    text: clean
+                    text: clean,
+                    track: 0
                 });
             });
+            
+            // 画面表示非表示解除 & モード切替のUI更新
+            const timelineRowsContainer = document.getElementById('timeline-rows-container');
+            if (timelineRowsContainer) timelineRowsContainer.classList.remove('hidden');
+            const cellActionsWrapper = document.getElementById('cell-actions-wrapper');
+            if (cellActionsWrapper) cellActionsWrapper.classList.remove('hidden');
+
             renderTimelineRows();
-            refreshTimelineSlidersMax();
+            if (typeof renderTimelineEditor === 'function') renderTimelineEditor();
+            if (typeof refreshTimelineSlidersMax === 'function') refreshTimelineSlidersMax();
         }
 
         function parseAndLoadSrt(text) {
+            if (!text || typeof text !== 'string') return;
             activeSubtitleSegments = [];
-            const blocks = text.trim().split(/\n\s*\n/);
-            blocks.forEach((block, idx) => {
-                const lines = block.trim().split('\n');
+            
+            // Windows (\r\n) や Old Mac (\r) の改行コードを \n に完全統一
+            const cleanText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+            const blocks = cleanText.split(/\n\s*\n/);
+            
+            let segId = 1;
+            blocks.forEach((block) => {
+                const lines = block.split('\n').map(l => l.trim()).filter(l => l.length > 0);
                 if (lines.length < 2) return;
-                const timeLine = lines.find(l => l.includes('-->'));
-                if (!timeLine) return;
-                const match = timeLine.match(/(\d+:\d+:\d+[,.]\d+)\s*-->\s*(\d+:\d+:\d+[,.]\d+)/);
+                
+                const timeLineIdx = lines.findIndex(l => l.includes('-->'));
+                if (timeLineIdx === -1) return;
+                
+                const timeLine = lines[timeLineIdx];
+                const match = timeLine.match(/(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})/);
                 if (!match) return;
+                
                 const start = srtTimeToSec(match[1]);
                 const end = srtTimeToSec(match[2]);
-                const textLines = lines.filter(l => l !== timeLine && !/^\d+$/.test(l.trim()));
+                
+                const textLines = lines.filter((l, i) => i !== timeLineIdx && !/^\d+$/.test(l));
                 const subtitleText = textLines.join(' ').trim();
-                if (!subtitleText) return;
-                activeSubtitleSegments.push({
-                    id: idx + 1,
-                    start: start,
-                    end: end,
-                    text: subtitleText
-                });
+                
+                if (subtitleText) {
+                    activeSubtitleSegments.push({
+                        id: segId++,
+                        start: parseFloat(start.toFixed(3)),
+                        end: parseFloat(end.toFixed(3)),
+                        text: subtitleText,
+                        track: 0
+                    });
+                }
             });
+
+            // 画面表示非表示解除 & モード切替のUI更新
+            const timelineRowsContainer = document.getElementById('timeline-rows-container');
+            if (timelineRowsContainer) timelineRowsContainer.classList.remove('hidden');
+            const cellActionsWrapper = document.getElementById('cell-actions-wrapper');
+            if (cellActionsWrapper) cellActionsWrapper.classList.remove('hidden');
+            const timelineEditorContainer = document.getElementById('timeline-editor-container');
+            if (timelineEditorContainer) timelineEditorContainer.classList.add('hidden');
+
+            const modeCellBtn = document.getElementById('mode-cell-btn');
+            const modeTimelineBtn = document.getElementById('mode-timeline-btn');
+            if (modeCellBtn && modeTimelineBtn) {
+                modeCellBtn.className = 'px-3 py-1 text-[10px] font-bold rounded-md transition-all bg-cyan-500 text-black';
+                modeTimelineBtn.className = 'px-3 py-1 text-[10px] font-bold rounded-md transition-all text-cyan-400 hover:text-white';
+            }
+
+            selectedRowIndex = -1;
             renderTimelineRows();
-            refreshTimelineSlidersMax();
+            if (typeof renderTimelineEditor === 'function') {
+                renderTimelineEditor();
+            }
+            if (typeof refreshTimelineSlidersMax === 'function') {
+                refreshTimelineSlidersMax();
+            }
         }
 
         selectedRowIndex = -1; // 初期状態は未選択
@@ -1999,6 +2276,16 @@ finally {
             if (activeSubtitleSegments.length === 0) {
                 timelineContainer.innerHTML = '<div class="text-center text-gray-600 mt-16 text-xs">NO LYRICS LOADED. SRTを読み込むか、歌詞を入力してください。</div>';
                 return;
+            }
+
+            // セル一覧描画前に開始時間 (start) の昇順に全自動正則化ソート
+            activeSubtitleSegments.sort((a, b) => (parseFloat(a.start) || 0) - (parseFloat(b.start) || 0));
+
+            // 選択中のアイテムIDに基づいて selectedRowIndex をソート後の正確な順序に自動追従補正
+            if (typeof selectedItems !== 'undefined' && selectedItems.length > 0) {
+                const selId = selectedItems[0].id;
+                const newIdx = activeSubtitleSegments.findIndex(s => s && s.id === selId);
+                if (newIdx >= 0) selectedRowIndex = newIdx;
             }
 
             if (selectedRowIndex >= activeSubtitleSegments.length) {
@@ -2023,26 +2310,11 @@ finally {
                 idxLabel.className = `text-[11px] font-mono w-7 text-center select-none font-bold mr-1 ${isSelected ? 'text-red-400' : 'text-cyan-500/60'}`;
                 idxLabel.innerText = `#${idx + 1}`;
 
-                // 停止中のセル選択クリック（DOM全再生成を避け、選択スタイル変更のみ行いダブルクリックイベント破棄を防止）
                 row.addEventListener('click', (e) => {
                     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'BUTTON') return;
-                    if (selectedRowIndex !== idx) {
-                        const prevSelectedRow = timelineContainer.querySelector('.border-red-500');
-                        if (prevSelectedRow) {
-                            prevSelectedRow.className = 'timeline-row flex items-center rounded-lg p-2 mb-1.5 transition-all text-xs cursor-pointer select-none bg-[#0d0f1e] border border-cyan-500/20 hover:border-cyan-500/50';
-                            const prevIdxSpan = prevSelectedRow.querySelector('span');
-                            if (prevIdxSpan) {
-                                prevIdxSpan.classList.remove('text-red-400');
-                                prevIdxSpan.classList.add('text-cyan-500/60');
-                            }
-                        }
-                        selectedRowIndex = idx;
-                        row.className = 'timeline-row flex items-center rounded-lg p-2 mb-1.5 transition-all text-xs cursor-pointer select-none border-2 border-red-500 bg-red-950/40 shadow-[0_0_14px_rgba(239,68,68,0.6)]';
-                        if (idxLabel) {
-                            idxLabel.classList.remove('text-cyan-500/60');
-                            idxLabel.classList.add('text-red-400');
-                        }
-                    }
+                    selectedRowIndex = idx;
+                    selectedItems = [{ id: seg.id, type: 'lyric' }];
+                    updateSelectionUI();
                 });
 
                 // 2. 歌詞テキスト表示 (ダブルクリックで編集モードに切替)
@@ -2282,9 +2554,74 @@ finally {
             const cursor = document.getElementById('timeline-editor-cursor');
             if (cursor) {
                 const zoomVal = parseFloat(document.getElementById('timeline-zoom')?.value || 60);
-                cursor.style.left = `${t * zoomVal}px`;
+                const cursorX = t * zoomVal;
+                cursor.style.left = `${cursorX}px`;
+
+                const container = document.getElementById('timeline-editor-container');
+                if (container) {
+                    const viewWidth = container.clientWidth;
+                    const scrollLeft = container.scrollLeft;
+                    if (cursorX > scrollLeft + viewWidth * 0.75 || cursorX < scrollLeft) {
+                        container.scrollLeft = cursorX - viewWidth * 0.25;
+                    }
+                }
             }
         }
+
+        // 音声プレビュー再生/一時停止の共通トグル処理
+        function toggleAlignerPlayPause() {
+            const alignerAudioEl = document.getElementById('aligner-audio-element');
+            const playBtn = document.getElementById('player-play-btn');
+            if (!alignerAudioEl) return;
+
+            if (alignerAudioEl.paused) {
+                alignerAudioEl.play();
+                if (playBtn) playBtn.innerText = "PAUSE";
+            } else {
+                alignerAudioEl.pause();
+                if (playBtn) playBtn.innerText = "PLAY";
+            }
+        }
+
+        // スペースキー (Space) 再生/停止 & 左右カーソルキー (ArrowLeft/ArrowRight) シーク移動
+        document.addEventListener('keydown', (e) => {
+            const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+            const isEditable = document.activeElement && (document.activeElement.isContentEditable || activeTag === 'input' || activeTag === 'textarea');
+
+            if (isEditable) return;
+
+            if (e.code === 'Space' || e.key === ' ') {
+                e.preventDefault();
+                toggleAlignerPlayPause();
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                const alignerAudioEl = document.getElementById('aligner-audio-element');
+                if (!alignerAudioEl) return;
+
+                e.preventDefault();
+                const snapEnabled = document.getElementById('timeline-snap')?.checked;
+                const bpmVal = parseFloat(document.getElementById('timeline-bpm')?.value || 120);
+                const resRatioVal = parseFloat(document.getElementById('timeline-resolution')?.value || 0.25);
+                const stepSec = (60.0 / (bpmVal || 120)) * resRatioVal;
+                
+                const delta = (snapEnabled && stepSec > 0) ? stepSec : 0.1;
+                let curTime = alignerAudioEl.currentTime || 0;
+
+                if (e.key === 'ArrowLeft') {
+                    curTime = Math.max(0, curTime - delta);
+                } else if (e.key === 'ArrowRight') {
+                    const totalDuration = alignerAudioEl.duration || 180.0;
+                    curTime = Math.min(totalDuration, curTime + delta);
+                }
+
+                if (snapEnabled && stepSec > 0) {
+                    curTime = Math.round(curTime / stepSec) * stepSec;
+                }
+
+                if (typeof seekTo === 'function') {
+                    seekTo(curTime);
+                }
+            }
+        });
 
         function onWorkAreaHandleMouseDown(e, type) {
             e.stopPropagation();
@@ -2332,6 +2669,39 @@ finally {
                     block.classList.remove('selected');
                 }
             });
+
+            // タイムライン側の選択状態 (selectedItems) を、セル編集側の selectedRowIndex へ正確に同期伝達
+            if (selectedItems.length > 0) {
+                const firstSelId = selectedItems[0].id;
+                const foundIdx = activeSubtitleSegments.findIndex(s => s && s.id === firstSelId);
+                if (foundIdx >= 0) {
+                    selectedRowIndex = foundIdx;
+                }
+            } else {
+                selectedRowIndex = -1;
+            }
+
+            // 下部セル一覧の強調枠クラスも同期更新
+            const timelineContainer = document.getElementById('timeline-rows-container');
+            if (timelineContainer) {
+                const rows = timelineContainer.querySelectorAll('.timeline-row');
+                rows.forEach((row, idx) => {
+                    const idxSpan = row.querySelector('span');
+                    if (selectedRowIndex !== -1 && idx === selectedRowIndex) {
+                        row.className = 'timeline-row flex items-center rounded-lg p-2 mb-1.5 transition-all text-xs cursor-pointer select-none border-2 border-red-500 bg-red-950/40 shadow-[0_0_14px_rgba(239,68,68,0.6)]';
+                        if (idxSpan) {
+                            idxSpan.classList.remove('text-cyan-500/60');
+                            idxSpan.classList.add('text-red-400');
+                        }
+                    } else {
+                        row.className = 'timeline-row flex items-center rounded-lg p-2 mb-1.5 transition-all text-xs cursor-pointer select-none bg-[#0d0f1e] border border-cyan-500/20 hover:border-cyan-500/50';
+                        if (idxSpan) {
+                            idxSpan.classList.remove('text-red-400');
+                            idxSpan.classList.add('text-cyan-500/60');
+                        }
+                    }
+                });
+            }
         }
 
         /* ---- ALIGNER オーディオプレーヤー連動 ---- */
@@ -2339,14 +2709,7 @@ finally {
             const alignerAudioEl = document.getElementById('aligner-audio-element');
             // PLAY/PAUSE
             if (e.target.closest('#player-play-btn')) {
-                if (!alignerAudioEl) return;
-                const playBtn = document.getElementById('player-play-btn');
-                if (alignerAudioEl.paused) {
-                    alignerAudioEl.play().then(() => { if (playBtn) playBtn.innerText = "PAUSE"; });
-                } else {
-                    alignerAudioEl.pause();
-                    if (playBtn) playBtn.innerText = "PLAY";
-                }
+                toggleAlignerPlayPause();
             }
             // LOAD RAW LYRICS
             if (e.target.closest('#btn-load-raw-lyrics')) {
@@ -2378,12 +2741,22 @@ finally {
             }
             // EXPORT SRT
             if (e.target.closest('#btn-export-srt')) {
-                if (activeSubtitleSegments.length === 0) { alert("タイムラインデータがありません。"); return; }
+                if (!activeSubtitleSegments || activeSubtitleSegments.length === 0) {
+                    alert("タイムラインデータがありません。");
+                    return;
+                }
                 const text = buildSrtString();
-                const blob = new Blob([text], { type: 'text/plain' });
+                // Windowsやプレイヤーでの文字化けを防ぐため UTF-8 BOM (\uFEFF) を付与
+                const blob = new Blob(['\uFEFF' + text], { type: 'text/plain;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = url; a.download = "output.srt"; a.click();
+                a.href = url;
+                a.download = "output.srt";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                addLog("EXPORTED SRT FILE WITH AUTO-SORTED TIMECODES", "success");
             }
             // BIND SRT TO VIDEO GENERATOR
             if (e.target.closest('#btn-bind-srt')) {
@@ -2459,9 +2832,55 @@ finally {
                 });
             }
 
-            if (zoomInput) zoomInput.addEventListener('input', renderTimelineEditor);
-            if (bpmInput) bpmInput.addEventListener('input', renderTimelineEditor);
-            if (resSelect) resSelect.addEventListener('change', renderTimelineEditor);
+            if (zoomInput) {
+                zoomInput.addEventListener('input', renderTimelineEditor);
+                zoomInput.addEventListener('change', renderTimelineEditor);
+            }
+            if (bpmInput) {
+                bpmInput.addEventListener('input', renderTimelineEditor);
+                bpmInput.addEventListener('change', renderTimelineEditor);
+            }
+            if (resSelect) {
+                resSelect.addEventListener('change', renderTimelineEditor);
+            }
+
+        // Generator から SRT Aligner への BPM 情報自動伝達・同期ヘルパー
+        function syncBpmToAligner(direction = 'from_generator') {
+            const configBpmInput = document.getElementById('config-bpm');
+            const timelineBpmInput = document.getElementById('timeline-bpm');
+            if (!configBpmInput || !timelineBpmInput) return;
+
+            if (direction === 'from_generator') {
+                const bpmVal = parseFloat(configBpmInput.value) || 120.0;
+                timelineBpmInput.value = bpmVal;
+            } else if (direction === 'from_aligner') {
+                const bpmVal = parseFloat(timelineBpmInput.value) || 120.0;
+                configBpmInput.value = bpmVal;
+            }
+
+            if (typeof renderTimelineEditor === 'function') {
+                renderTimelineEditor();
+            }
+        }
+
+        // BPM変更・タブ切替時のイベントリスナー
+        document.addEventListener('DOMContentLoaded', () => {
+            const configBpmInput = document.getElementById('config-bpm');
+            const timelineBpmInput = document.getElementById('timeline-bpm');
+            const tabAlignBtn = document.getElementById('tab-align-btn');
+
+            if (configBpmInput) {
+                configBpmInput.addEventListener('input', () => syncBpmToAligner('from_generator'));
+                configBpmInput.addEventListener('change', () => syncBpmToAligner('from_generator'));
+            }
+            if (timelineBpmInput) {
+                timelineBpmInput.addEventListener('input', () => syncBpmToAligner('from_aligner'));
+                timelineBpmInput.addEventListener('change', () => syncBpmToAligner('from_aligner'));
+            }
+            if (tabAlignBtn) {
+                tabAlignBtn.addEventListener('click', () => syncBpmToAligner('from_generator'));
+            }
+        });
 
             const btnAddSubTimeline = document.getElementById('btn-add-subtitle-timeline');
             if (btnAddSubTimeline) {
@@ -2495,13 +2914,13 @@ finally {
             refreshTimelineSlidersMax();
         }
 
-        // 5トラックへの自動分散割り当て
+        // 5トラックへの初期自動分散割り当て (すでにトラックが割り当てられている既存セルは一切上書きしません)
         function autoDistributeTracksIfNeeded() {
             if (!activeSubtitleSegments || activeSubtitleSegments.length === 0) return;
             let trackEndTimes = [0, 0, 0, 0, 0];
 
             activeSubtitleSegments.forEach(seg => {
-                if (typeof seg.track !== 'number') {
+                if (typeof seg.track !== 'number' || seg.track < 0 || seg.track >= 5) {
                     let bestTrack = 0;
                     for (let t = 0; t < 5; t++) {
                         if (seg.start >= trackEndTimes[t]) {
@@ -2511,7 +2930,7 @@ finally {
                     }
                     seg.track = bestTrack;
                 }
-                if (seg.track >= 0 && seg.track < 5) {
+                if (typeof seg.track === 'number' && seg.track >= 0 && seg.track < 5) {
                     trackEndTimes[seg.track] = Math.max(trackEndTimes[seg.track], seg.end);
                 }
             });
@@ -2532,14 +2951,13 @@ finally {
 
             const bpm = parseFloat(document.getElementById('timeline-bpm')?.value || 120);
             const resRatio = parseFloat(document.getElementById('timeline-resolution')?.value || 0.25);
-            const beatSec = 60.0 / bpm;
-            const measureSec = beatSec * 4.0; // 4/4拍子
-            const stepSec = beatSec * resRatio; // 指定拍分割
+            const beatSec = 60.0 / (bpm || 120);
+            const measureSec = beatSec * 4.0;
+            const stepSec = beatSec * resRatio;
 
-            // 1. ルーラー描画 (小節番号 M.1, M.2... + 時間表示)
+            // 1. ルーラー描画
             const ruler = document.createElement('div');
             ruler.className = "timeline-ruler h-7 bg-[#0c0d1a] border-b border-cyan-500/40 relative text-[9px] text-cyan-400 font-mono select-none overflow-hidden z-20 cursor-pointer";
-
             for (let t = 0.0; t < totalDuration; t += stepSec) {
                 const xPx = t * pxPerSec;
                 const isMeasure = Math.abs(t % measureSec) < 0.001 || Math.abs((t % measureSec) - measureSec) < 0.001;
@@ -2562,133 +2980,107 @@ finally {
             }
             tracksWrapper.appendChild(ruler);
 
-            // 2. 全トラック背景への小節＆指定拍グリッド縦線オーバーレイ (小節線は太く、他はやや細い縦線)
-            const gridOverlay = document.createElement('div');
-            gridOverlay.className = "absolute inset-0 pointer-events-none z-0";
+            // 2. トラックコンテナ
+            const NUM_TRACKS = 5;
+            const trackEls = [];
+            for (let t = 0; t < NUM_TRACKS; t++) {
+                const trackRow = document.createElement('div');
+                trackRow.className = "lyric-track relative flex items-center";
+                trackRow.style.height = "42px";
+                trackRow.style.backgroundColor = "#0f0f1b";
+                trackRow.style.borderBottom = "1px solid #1e1e2f";
+                trackRow.dataset.trackIndex = t;
 
+                const trackLabel = document.createElement('div');
+                trackLabel.className = "absolute left-2 text-[9px] font-mono text-cyan-500/20 pointer-events-none select-none z-0";
+                trackLabel.innerText = `TRACK ${t + 1}`;
+                trackRow.appendChild(trackLabel);
+                tracksWrapper.appendChild(trackRow);
+                trackEls.push(trackRow);
+            }
+
+            // 3. グリッドオーバーレイ (解像度設定 timeline-resolution に合わせた全ステップで細かく線を描画: z-index: 25)
+            const gridOverlay = document.createElement('div');
+            gridOverlay.className = "absolute inset-0 pointer-events-none";
+            gridOverlay.style.zIndex = "25";
             for (let t = 0.0; t < totalDuration; t += stepSec) {
                 const xPx = t * pxPerSec;
                 const isMeasure = Math.abs(t % measureSec) < 0.001 || Math.abs((t % measureSec) - measureSec) < 0.001;
                 const isBeat = Math.abs(t % beatSec) < 0.001 || Math.abs((t % beatSec) - beatSec) < 0.001;
-
                 const line = document.createElement('div');
+                line.style.position = "absolute";
                 line.style.left = `${xPx}px`;
-
+                line.style.top = "0";
+                line.style.bottom = "0";
                 if (isMeasure) {
-                    // 小節の縦線: 太線 [3px] + ネオンシャドウ
-                    line.className = "absolute top-0 bottom-0 border-l-[3px] border-cyan-400/80 shadow-[0_0_8px_rgba(6,182,212,0.5)] z-10";
+                    // 小節線（鮮明なシアン太線 + ネオンシャドウ）
+                    line.style.borderLeft = "1px solid rgba(0, 243, 255, 0.6)";
+                    line.style.boxShadow = "0 0 6px rgba(0, 243, 255, 0.4)";
                 } else if (isBeat) {
-                    // 拍の縦線: やや細い鮮明な縦線
-                    line.className = "absolute top-0 bottom-0 border-l border-cyan-500/35 z-0";
+                    // 拍線（シアン中線）
+                    line.style.borderLeft = "1px solid rgba(0, 243, 255, 0.35)";
                 } else {
-                    // サブ分割拍: 細い縦線
-                    line.className = "absolute top-0 bottom-0 border-l border-cyan-500/20 z-0";
+                    // 解像度に連動した細かな分割線 (1/4拍、1/8拍等の点線)
+                    line.style.borderLeft = "1px dotted rgba(0, 243, 255, 0.25)";
                 }
                 gridOverlay.appendChild(line);
             }
             tracksWrapper.appendChild(gridOverlay);
 
-            // 2.5 ワークエリアの描画
+            // 3.5 ワークエリア
             let inT = workAreaIn;
             let outT = workAreaOut !== null ? workAreaOut : totalDuration;
-
             if (inT > 0) {
                 const leftOverlay = document.createElement('div');
-                leftOverlay.className = 'work-area-overlay absolute top-0 bottom-0 bg-black/60 z-10 pointer-events-none';
+                leftOverlay.className = 'work-area-overlay absolute top-0 bottom-0 bg-black/60 z-28 pointer-events-none';
                 leftOverlay.style.left = '0px';
                 leftOverlay.style.width = `${inT * pxPerSec}px`;
                 tracksWrapper.appendChild(leftOverlay);
             }
             if (outT < totalDuration) {
                 const rightOverlay = document.createElement('div');
-                rightOverlay.className = 'work-area-overlay absolute top-0 bottom-0 bg-black/60 z-10 pointer-events-none';
+                rightOverlay.className = 'work-area-overlay absolute top-0 bottom-0 bg-black/60 z-28 pointer-events-none';
                 rightOverlay.style.left = `${outT * pxPerSec}px`;
                 rightOverlay.style.width = `${(totalDuration - outT) * pxPerSec}px`;
                 tracksWrapper.appendChild(rightOverlay);
             }
-
             const workAreaBar = document.createElement('div');
-            workAreaBar.className = 'work-area-bar absolute top-0 h-[12px] bg-green-500/30 border-l border-r border-green-500 z-20 cursor-move';
+            workAreaBar.className = 'work-area-bar absolute top-0 h-[12px] bg-green-500/30 border-l border-r border-green-500 z-29 cursor-move';
             workAreaBar.style.left = `${inT * pxPerSec}px`;
             workAreaBar.style.width = `${Math.max(2, (outT - inT) * pxPerSec)}px`;
-            
             const inHandle = document.createElement('div');
             inHandle.className = 'work-area-handle in-handle absolute top-0 left-[-6px] w-[12px] h-[12px] bg-green-500 rounded-l cursor-ew-resize';
             inHandle.addEventListener('mousedown', (e) => onWorkAreaHandleMouseDown(e, 'in'));
-            
             const outHandle = document.createElement('div');
             outHandle.className = 'work-area-handle out-handle absolute top-0 right-[-6px] w-[12px] h-[12px] bg-green-500 rounded-r cursor-ew-resize';
             outHandle.addEventListener('mousedown', (e) => onWorkAreaHandleMouseDown(e, 'out'));
-            
             workAreaBar.appendChild(inHandle);
             workAreaBar.appendChild(outHandle);
             tracksWrapper.appendChild(workAreaBar);
 
-            // 3. 再生カーソル/シークバー (#timeline-editor-cursor) つまみ付き＆ドラッグ対応
-            const cursor = document.createElement('div');
-            cursor.id = 'timeline-editor-cursor';
-            cursor.className = 'absolute top-0 bottom-0 w-[3px] bg-red-500 shadow-[0_0_10px_#ef4444] z-30 cursor-ew-resize';
-            const curTime = alignerAudioEl ? alignerAudioEl.currentTime : 0;
-            cursor.style.left = `${curTime * pxPerSec}px`;
-
-            // シークバーの持ち手（ダイヤ型つまみ）
-            const handle = document.createElement('div');
-            handle.className = "absolute -top-1 -left-[5px] w-3 h-3 bg-red-500 rotate-45 rounded-sm shadow-[0_0_6px_#ef4444] hover:bg-red-400 transition-colors";
-            cursor.appendChild(handle);
-            tracksWrapper.appendChild(cursor);
-
-            // 4. 5トラック (Track 0 〜 Track 4) のトラックコンテナ作成
-            const NUM_TRACKS = 5;
-            const trackEls = [];
-
-            for (let t = 0; t < NUM_TRACKS; t++) {
-                const trackRow = document.createElement('div');
-                trackRow.className = "lyric-track relative flex items-center";
-                trackRow.dataset.trackIndex = t;
-
-                const trackLabel = document.createElement('div');
-                trackLabel.className = "absolute left-2 text-[9px] font-mono text-cyan-500/30 pointer-events-none select-none z-0";
-                trackLabel.innerText = `TRACK ${t + 1}`;
-                trackRow.appendChild(trackLabel);
-
-                tracksWrapper.appendChild(trackRow);
-                trackEls.push(trackRow);
-            }
-
-            // トラック初期割り当て
             autoDistributeTracksIfNeeded();
 
-            // 5. 各セグメントのブロック (.lyric-block) 描画
+            // 4. セグメントブロック (z-index: 30)
             activeSubtitleSegments.forEach(seg => {
                 let tIdx = (typeof seg.track === 'number' && seg.track >= 0 && seg.track < NUM_TRACKS) ? seg.track : 0;
                 const targetTrackEl = trackEls[tIdx];
                 if (!targetTrackEl) return;
-
                 const block = document.createElement('div');
-                block.className = "lyric-block z-10";
+                block.className = "lyric-block";
+                block.style.zIndex = "30";
+                block.style.position = "absolute";
                 block.dataset.id = seg.id;
-                
-                // 選択状態のスタイル適用
-                if (selectedItems.some(si => si.id === seg.id)) {
-                    block.classList.add('selected');
-                }
-
-                const leftPx = seg.start * pxPerSec;
-                const widthPx = Math.max(24, (seg.end - seg.start) * pxPerSec);
-                block.style.left = `${leftPx}px`;
-                block.style.width = `${widthPx}px`;
+                if (selectedItems.some(si => si.id === seg.id)) block.classList.add('selected');
+                block.style.left = `${seg.start * pxPerSec}px`;
+                block.style.width = `${Math.max(24, (seg.end - seg.start) * pxPerSec)}px`;
                 block.style.top = "5px";
-
                 const textSpan = document.createElement('span');
                 textSpan.className = "truncate flex-grow mr-1 cursor-pointer z-10 select-none px-1 py-0.5 rounded hover:bg-white/10";
                 textSpan.innerText = seg.text || "(空の歌詞)";
-                textSpan.title = "ダブルクリックでテキスト編集";
-
                 const textInput = document.createElement('input');
                 textInput.type = 'text';
                 textInput.className = "w-full bg-black/90 border border-cyan-400 rounded px-1 py-0.5 text-xs text-white font-bold hidden focus:outline-none focus:border-red-400 z-50 absolute inset-0";
                 textInput.value = seg.text;
-
                 const finishEdit = () => {
                     seg.text = textInput.value.trim();
                     textSpan.innerText = seg.text || "(空の歌詞)";
@@ -2696,108 +3088,63 @@ finally {
                     textSpan.classList.remove('hidden');
                     renderTimelineRows();
                 };
-
-                textSpan.addEventListener('dblclick', (e) => {
-                    e.stopPropagation();
-                    textSpan.classList.add('hidden');
-                    textInput.classList.remove('hidden');
-                    textInput.focus();
-                    textInput.select();
-                });
-
+                textSpan.addEventListener('dblclick', (e) => { e.stopPropagation(); textSpan.classList.add('hidden'); textInput.classList.remove('hidden'); textInput.focus(); textInput.select(); });
                 textInput.addEventListener('blur', finishEdit);
-                textInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        finishEdit();
-                    }
-                    if (e.key === 'Escape') {
-                        e.preventDefault();
-                        textInput.value = seg.text;
-                        textInput.classList.add('hidden');
-                        textSpan.classList.remove('hidden');
-                    }
-                });
-                textInput.addEventListener('mousedown', (e) => {
-                    e.stopPropagation();
-                });
-
-                const handleLeft = document.createElement('div');
-                handleLeft.className = "resize-handle-left";
-                const handleRight = document.createElement('div');
-                handleRight.className = "resize-handle-right";
-
+                textInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') finishEdit(); if (e.key === 'Escape') { textInput.value = seg.text; textInput.classList.add('hidden'); textSpan.classList.remove('hidden'); } });
+                const handleLeft = document.createElement('div'); handleLeft.className = "resize-handle-left";
+                const handleRight = document.createElement('div'); handleRight.className = "resize-handle-right";
                 let isDragging = false, isResizingLeft = false, isResizingRight = false;
-                let startX = 0, startY = 0, origStart = 0, origEnd = 0, origTrack = tIdx;
-                let draggingItems = [];
-                let hasMoved = false;
-
+                let startX = 0, startY = 0, draggingItems = [], hasMoved = false;
                 block.addEventListener('mousedown', (e) => {
-                    if (!textInput.classList.contains('hidden')) {
-                        return;
-                    }
-
-                    if (e.target === handleLeft) {
-                        isResizingLeft = true;
-                        e.stopPropagation();
-                        e.preventDefault();
-                    } else if (e.target === handleRight) {
-                        isResizingRight = true;
-                        e.stopPropagation();
-                        e.preventDefault();
-                    } else {
-                        isDragging = true;
-                        e.stopPropagation();
-                        if (e.target !== textSpan) {
-                            e.preventDefault();
-                        }
-                    }
-
+                    if (!textInput.classList.contains('hidden')) return;
+                    if (e.target === handleLeft) { isResizingLeft = true; e.stopPropagation(); e.preventDefault(); }
+                    else if (e.target === handleRight) { isResizingRight = true; e.stopPropagation(); e.preventDefault(); }
+                    else { isDragging = true; e.stopPropagation(); if (e.target !== textSpan) e.preventDefault(); }
+                    
                     const segId = seg.id;
+                    // Ctrl/Meta キーが押されていない通常のドラッグ/クリック時は、
+                    // 前回の選択状態を完全クリアして操作ブロック単一のみを選択状態にする！
                     if (e.ctrlKey || e.metaKey) {
                         const idx = selectedItems.findIndex(si => si.id === segId);
                         if (idx >= 0) selectedItems.splice(idx, 1);
                         else selectedItems.push({ id: segId, type: 'lyric' });
                     } else {
-                        if (!selectedItems.some(si => si.id === segId)) {
-                            selectedItems = [{ id: segId, type: 'lyric' }];
-                        }
+                        selectedItems = [{ id: segId, type: 'lyric' }];
                     }
                     updateSelectionUI();
 
                     draggingItems = selectedItems.map(si => {
-                        const ref = activeSubtitleSegments.find(s => s.id === si.id);
+                        const ref = activeSubtitleSegments.find(s => s && s.id === si.id);
+                        if (!ref) return null;
                         return {
-                            ref,
-                            initialStart: ref.start,
-                            initialEnd: ref.end,
-                            initialTrack: ref.track || 0
+                            id: ref.id,
+                            ref: ref,
+                            initialStart: parseFloat(ref.start) || 0,
+                            initialEnd: parseFloat(ref.end) || 0,
+                            initialTrack: (typeof ref.track === 'number') ? ref.track : 0
                         };
-                    });
+                    }).filter(item => item !== null);
 
-                    startX = e.clientX;
-                    startY = e.clientY;
-                    hasMoved = false;
+                    startX = e.clientX; startY = e.clientY; hasMoved = false;
+                    const initialSegStart = parseFloat(seg.start) || 0;
+                    const initialSegEnd = parseFloat(seg.end) || 0;
 
                     const snapEnabled = document.getElementById('timeline-snap')?.checked;
                     const bpmVal = parseFloat(document.getElementById('timeline-bpm')?.value || 120);
                     const resRatioVal = parseFloat(document.getElementById('timeline-resolution')?.value || 0.25);
-                    const gridLen = (60.0 / bpmVal) * (resRatioVal * 4.0);
-
+                    const gridLen = (60.0 / (bpmVal || 120)) * resRatioVal;
+                    
                     const onMouseMove = (me) => {
-                        const dx = me.clientX - startX;
-                        const dy = me.clientY - startY;
-
-                        // 移動距離が4px未満ならドラッグ処理を開始しない
-                        if (!hasMoved && Math.sqrt(dx*dx + dy*dy) < 4) {
-                            return;
-                        }
+                        const dx = me.clientX - startX; const dy = me.clientY - startY;
+                        if (!hasMoved && Math.sqrt(dx*dx + dy*dy) < 4) return;
                         hasMoved = true;
 
                         const deltaSec = dx / pxPerSec;
 
                         if (isDragging) {
-                            const base = draggingItems.find(di => di.ref.id === seg.id);
+                            const base = draggingItems.find(di => di && di.id === seg.id);
+                            if (!base || typeof base.initialStart !== 'number') return;
+
                             let proposedStart = base.initialStart + deltaSec;
                             if (proposedStart < 0) proposedStart = 0;
                             if (snapEnabled) proposedStart = snapToGrid(proposedStart, 0, gridLen);
@@ -2806,6 +3153,7 @@ finally {
                             const trackDelta = Math.round(dy / 42.0);
 
                             draggingItems.forEach(di => {
+                                if (!di || !di.ref) return;
                                 let newStart = di.initialStart + actualDeltaT;
                                 let dur = di.initialEnd - di.initialStart;
                                 if (newStart < 0) newStart = 0;
@@ -2826,30 +3174,24 @@ finally {
                             });
 
                         } else if (isResizingLeft) {
-                            draggingItems.forEach(di => {
-                                let newStart = Math.max(0, di.initialStart + deltaSec);
-                                if (newStart >= di.initialEnd - 0.1) newStart = di.initialEnd - 0.1;
-                                if (snapEnabled) newStart = snapToGrid(newStart, 0, gridLen);
-                                di.ref.start = parseFloat(newStart.toFixed(3));
+                            // 初期開始時間 (initialSegStart) に対するドラッグ差分 (deltaSec) で高精度計算！
+                            let proposedStart = initialSegStart + deltaSec;
+                            if (proposedStart < 0) proposedStart = 0;
+                            if (proposedStart >= seg.end - 0.1) proposedStart = seg.end - 0.1;
+                            if (snapEnabled && gridLen > 0) proposedStart = snapToGrid(proposedStart, 0, gridLen);
 
-                                const dom = tracksWrapper.querySelector(`.lyric-block[data-id="${di.ref.id}"]`);
-                                if (dom) {
-                                    dom.style.left = `${di.ref.start * pxPerSec}px`;
-                                    dom.style.width = `${Math.max(24, (di.ref.end - di.ref.start) * pxPerSec)}px`;
-                                }
-                            });
+                            seg.start = parseFloat(proposedStart.toFixed(3));
+                            block.style.left = `${seg.start * pxPerSec}px`;
+                            block.style.width = `${Math.max(24, (seg.end - seg.start) * pxPerSec)}px`;
 
                         } else if (isResizingRight) {
-                            draggingItems.forEach(di => {
-                                let newEnd = Math.max(di.initialStart + 0.1, di.initialEnd + deltaSec);
-                                if (snapEnabled) newEnd = snapToGrid(newEnd, 0, gridLen);
-                                di.ref.end = parseFloat(newEnd.toFixed(3));
+                            // 初期終了時間 (initialSegEnd) に対するドラッグ差分 (deltaSec) で高精度計算！
+                            let proposedEnd = initialSegEnd + deltaSec;
+                            if (proposedEnd <= seg.start + 0.1) proposedEnd = seg.start + 0.1;
+                            if (snapEnabled && gridLen > 0) proposedEnd = snapToGrid(proposedEnd, 0, gridLen);
 
-                                const dom = tracksWrapper.querySelector(`.lyric-block[data-id="${di.ref.id}"]`);
-                                if (dom) {
-                                    dom.style.width = `${Math.max(24, (di.ref.end - di.ref.start) * pxPerSec)}px`;
-                                }
-                            });
+                            seg.end = parseFloat(proposedEnd.toFixed(3));
+                            block.style.width = `${Math.max(24, (seg.end - seg.start) * pxPerSec)}px`;
                         }
                     };
 
@@ -2861,8 +3203,8 @@ finally {
                         document.removeEventListener('mouseup', onMouseUp);
                         
                         if (hasMoved) {
+                            // 下部セル一覧のみを同期更新（全DOMの再構築を行わないため非選択セルの位置飛びが100%防止されます）
                             renderTimelineRows();
-                            renderTimelineEditor();
                         }
                     };
 
@@ -2875,6 +3217,69 @@ finally {
                 block.appendChild(textInput);
                 block.appendChild(handleRight);
                 targetTrackEl.appendChild(block);
+            });
+
+            // 5. 再生カーソル/シークバー (#timeline-editor-cursor) 最前面 (z-index: 100) & ドラッグ・解像度スナップ対応
+            const cursor = document.createElement('div');
+            cursor.id = 'timeline-editor-cursor';
+            cursor.className = 'absolute top-0 bottom-0 w-[3px] bg-red-500 shadow-[0_0_10px_#ef4444] z-[100] cursor-ew-resize';
+            const curTime = alignerAudioEl ? alignerAudioEl.currentTime : 0.0;
+            cursor.style.left = `${curTime * pxPerSec}px`;
+
+            // シークバーの持ち手（ダイヤ型つまみハンドル）
+            const handle = document.createElement('div');
+            handle.className = "absolute -top-1 -left-[5px] w-3.5 h-3.5 bg-red-500 rotate-45 rounded-sm shadow-[0_0_8px_#ef4444] hover:bg-red-400 transition-colors cursor-ew-resize";
+            cursor.appendChild(handle);
+            tracksWrapper.appendChild(cursor);
+
+            // シークバーのドラッグ & 解像度最小スナップ処理
+            const updateCursorPos = (clientX) => {
+                const rect = tracksWrapper.getBoundingClientRect();
+                let clickX = clientX - rect.left;
+                if (clickX < 0) clickX = 0;
+                let targetSec = clickX / pxPerSec;
+                if (targetSec > totalDuration) targetSec = totalDuration;
+
+                // スナップモード有効時、現在設定されている解像度の最小ステップ (stepSec) に磁石スナップ！
+                const snapEnabled = document.getElementById('timeline-snap')?.checked;
+                if (snapEnabled && stepSec > 0) {
+                    targetSec = Math.round(targetSec / stepSec) * stepSec;
+                }
+
+                targetSec = Math.max(0, Math.min(totalDuration, targetSec));
+                cursor.style.left = `${targetSec * pxPerSec}px`;
+
+                if (alignerAudioEl) {
+                    alignerAudioEl.currentTime = targetSec;
+                }
+                const timeDisplay = document.getElementById('player-time-display');
+                if (timeDisplay) {
+                    timeDisplay.innerText = `${formatSeconds(targetSec)} / ${formatSeconds(totalDuration)}`;
+                }
+            };
+
+            let isCursorDragging = false;
+            cursor.addEventListener('mousedown', (e) => {
+                isCursorDragging = true;
+                e.stopPropagation();
+                e.preventDefault();
+                updateCursorPos(e.clientX);
+
+                const onCursorMove = (me) => {
+                    if (isCursorDragging) updateCursorPos(me.clientX);
+                };
+                const onCursorUp = () => {
+                    isCursorDragging = false;
+                    document.removeEventListener('mousemove', onCursorMove);
+                    document.removeEventListener('mouseup', onCursorUp);
+                };
+                document.addEventListener('mousemove', onCursorMove);
+                document.addEventListener('mouseup', onCursorUp);
+            });
+
+            // ルーラーエリアクリックでも即時シーク＆スナップ移動
+            ruler.addEventListener('mousedown', (e) => {
+                updateCursorPos(e.clientX);
             });
 
             // 6. シークバーのクリック移動 ＆ 複数範囲選択（Selection Box）
@@ -3005,11 +3410,22 @@ finally {
                 if (playerSeekEl) playerSeekEl.value = (cur / dur * 100).toString();
                 if (timeDisplayEl) timeDisplayEl.innerText = `${formatSeconds(cur)} / ${formatSeconds(dur)}`;
 
-                // タイムラインエディタ再生カーソルの同期
+                // タイムラインエディタ再生カーソルの同期 & 自動追従スクロール (Follow Playhead)
                 const cursor = document.getElementById('timeline-editor-cursor');
                 if (cursor) {
                     const zoomVal = parseFloat(document.getElementById('timeline-zoom')?.value || 60);
-                    cursor.style.left = `${cur * zoomVal}px`;
+                    const cursorX = cur * zoomVal;
+                    cursor.style.left = `${cursorX}px`;
+
+                    const container = document.getElementById('timeline-editor-container');
+                    if (container) {
+                        const viewWidth = container.clientWidth;
+                        const scrollLeft = container.scrollLeft;
+                        // シークバーが可視領域の75%を超えた場合、または画面外に出た場合に滑らかにスクロール追従
+                        if (cursorX > scrollLeft + viewWidth * 0.75 || cursorX < scrollLeft) {
+                            container.scrollLeft = cursorX - viewWidth * 0.25;
+                        }
+                    }
                 }
 
                 const follow = document.getElementById('toggle-aligner-follow');
@@ -3087,11 +3503,52 @@ finally {
             }
         });
 
+        function initApiKeyPersistence() {
+            const apiKeyEl = document.getElementById('api-key-input');
+            const btnClearEl = document.getElementById('btn-clear-api-key');
+            const previewEl = document.getElementById('api-key-preview');
+
+            if (!apiKeyEl) return;
+
+            // 1. ローカルストレージからの自動復元
+            const savedKey = localStorage.getItem('amvg_gemini_api_key');
+            if (savedKey) {
+                apiKeyEl.value = savedKey;
+                if (previewEl) {
+                    previewEl.innerText = `Active Key: Saved in Browser (Ends with ...${savedKey.slice(-4)})`;
+                }
+            }
+
+            // 2. 入力時の自動保存
+            apiKeyEl.addEventListener('input', () => {
+                const val = apiKeyEl.value.trim();
+                if (val) {
+                    localStorage.setItem('amvg_gemini_api_key', val);
+                    if (previewEl) previewEl.innerText = `Active Key: Saved in Browser (Ends with ...${val.slice(-4)})`;
+                } else {
+                    localStorage.removeItem('amvg_gemini_api_key');
+                    if (previewEl) previewEl.innerText = "Active Key: None (環境変数 GEMINI_API_KEY が定義されている場合は自動的に優先利用されます)";
+                }
+            });
+
+            // 3. 「CLEAR KEY」ボタンでの完全消去
+            if (btnClearEl) {
+                btnClearEl.addEventListener('click', () => {
+                    apiKeyEl.value = '';
+                    localStorage.removeItem('amvg_gemini_api_key');
+                    if (previewEl) previewEl.innerText = "Active Key: None (環境変数 GEMINI_API_KEY が定義されている場合は自動的に優先利用されます)";
+                    if (typeof addLog === 'function') addLog('API KEY CLEARED FROM BROWSER', 'system');
+                });
+            }
+        }
+
         // DOMContentLoaded 時の初期化
         document.addEventListener('DOMContentLoaded', () => {
             initTimelineEditorEvents();
+            initApiKeyPersistence();
         });
         initTimelineEditorEvents();
+        initApiKeyPersistence();
         if (playerSeekEl) {
             playerSeekEl.addEventListener('input', (e) => {
                 const alignerAudioEl = document.getElementById('aligner-audio-element');
@@ -3103,65 +3560,6 @@ finally {
 
         /* 初期ロード */
         loadPresetFilters();
-
-    /* SYSTEM SHUTDOWN LOGIC */
-        const btnShutdown = document.getElementById('btn-shutdown');
-        if (btnShutdown) {
-            btnShutdown.addEventListener('click', async () => {
-                const confirmShutdown = confirm("⚠️ システムを完全に終了しますか？\n(バックグラウンドで稼働中のエンジンも停止します)");
-                if (confirmShutdown) {
-                    btnShutdown.disabled = true;
-                    btnShutdown.innerText = "SHUTTING DOWN...";
-                    try {
-                        // サーバーへ終了シグナルを送信
-                        await fetch(getApiUrl('/shutdown'), { method: 'POST' });
-                    } catch (e) {
-                        // サーバーが落ちたことでfetchエラーが出ても無視する
-                    }
-                    alert("システムエンジンを完全に停止しました。ブラウザのタブを閉じてください。");
-                    // 可能なブラウザ環境であれば自動でタブを閉じる
-                    window.close();
-                }
-            });
-        }
-
-        // Generator から SRT Aligner への BPM 情報自動伝達・同期ヘルパー
-        function syncBpmToAligner(direction = 'from_generator') {
-            const configBpmInput = document.getElementById('config-bpm');
-            const timelineBpmInput = document.getElementById('timeline-bpm');
-            if (!configBpmInput || !timelineBpmInput) return;
-
-            if (direction === 'from_generator') {
-                const bpmVal = parseFloat(configBpmInput.value) || 120.0;
-                timelineBpmInput.value = bpmVal;
-            } else if (direction === 'from_aligner') {
-                const bpmVal = parseFloat(timelineBpmInput.value) || 120.0;
-                configBpmInput.value = bpmVal;
-            }
-
-            if (typeof renderTimelineEditor === 'function') {
-                renderTimelineEditor();
-            }
-        }
-
-        // BPM変更・タブ切替時のイベントリスナー (通常版共通同期)
-        document.addEventListener('DOMContentLoaded', () => {
-            const configBpmInput = document.getElementById('config-bpm');
-            const timelineBpmInput = document.getElementById('timeline-bpm');
-            const tabAlignBtn = document.getElementById('tab-align-btn');
-
-            if (configBpmInput) {
-                configBpmInput.addEventListener('input', () => syncBpmToAligner('from_generator'));
-                configBpmInput.addEventListener('change', () => syncBpmToAligner('from_generator'));
-            }
-            if (timelineBpmInput) {
-                timelineBpmInput.addEventListener('input', () => syncBpmToAligner('from_aligner'));
-                timelineBpmInput.addEventListener('change', () => syncBpmToAligner('from_aligner'));
-            }
-            if (tabAlignBtn) {
-                tabAlignBtn.addEventListener('click', () => syncBpmToAligner('from_generator'));
-            }
-        });
    </script>
 
 <!-- FILTER PREVIEW MODAL -->
