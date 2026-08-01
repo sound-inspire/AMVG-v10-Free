@@ -2145,6 +2145,12 @@ finally {
                 outNumInput.addEventListener('change', (e) => {
                     let val = parseFloat(e.target.value) || 0;
                     seg.end = Math.max(seg.start + 0.1, val);
+                    
+                    // 終了時間(OUT)が設定・変更されたため、自動的に次の歌詞行へ選択を移動！
+                    if (idx < activeSubtitleSegments.length - 1) {
+                        selectedRowIndex = idx + 1;
+                        selectedItems = [{ id: activeSubtitleSegments[selectedRowIndex].id, type: 'lyric' }];
+                    }
                     renderTimelineRows();
                 });
 
@@ -2197,8 +2203,9 @@ finally {
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
                 if (!activeSubtitleSegments || activeSubtitleSegments.length === 0) return;
 
+                // セルが選択されていない場合は誤動作防止のため処理しない（最初の字幕データを勝手に上書きしない）
                 if (selectedRowIndex < 0 || selectedRowIndex >= activeSubtitleSegments.length) {
-                    selectedRowIndex = 0;
+                    return;
                 }
 
                 e.preventDefault();
@@ -2218,9 +2225,10 @@ finally {
                     seg.end = parseFloat(alignerAudioEl.currentTime.toFixed(2));
                     if (seg.end <= seg.start) seg.end = parseFloat((seg.start + 0.8).toFixed(2));
 
-                    // 次のセルへ自動移行！
+                    // 終了時間(OUT)が決定されたので、選択行を次のセルへ自動移行！
                     if (selectedRowIndex < activeSubtitleSegments.length - 1) {
                         selectedRowIndex++;
+                        selectedItems = [{ id: activeSubtitleSegments[selectedRowIndex].id, type: 'lyric' }];
                     }
 
                     renderTimelineRows();
