@@ -1978,7 +1978,8 @@ finally {
 
         // オフライン/API未設定時でも楽曲時間・テンポに応じた自動アライメント割り振りを行うフォールバック関数
         function performLocalAutoAlignment(rawLyricsText, audioEl) {
-            const lines = rawLyricsText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            // [Intro] や [Chorus] などのセクションマーカー行を除外して歌詞行のみ抽出
+            const lines = rawLyricsText.split('\n').map(l => l.trim()).filter(l => l.length > 0 && !l.startsWith('['));
             if (lines.length === 0) return;
 
             const totalDuration = (audioEl && audioEl.duration && !isNaN(audioEl.duration)) ? audioEl.duration : 180.0;
@@ -2455,17 +2456,26 @@ finally {
                     .then(res => res.json())
                     .then(data => {
                         if (data.status === 'success' && data.segments && data.segments.length > 0) {
-                            activeSubtitleSegments = data.segments.map((seg, idx) => ({
-                                id: idx + 1,
-                                start: parseFloat(seg.start || 0),
-                                end: parseFloat(seg.end || (seg.start + 2.0)),
-                                text: seg.text || "",
-                                track: 0
-                            }));
-                            renderTimelineRows();
-                            refreshTimelineSlidersMax();
-                            if (typeof addLog === 'function') addLog(`⚡ AI TIMELINE ALIGNMENT COMPLETED (${data.segments.length} CELLS)`, 'success');
-                            alert(`AIアライメント完了: ${data.segments.length}行のタイムコードを自動割り振りました。`);
+                            // [Intro] などのセクションマーカー行を除外して純粋な歌詞行のみに絞り込む
+                            const validSegments = data.segments.filter(seg => {
+                                const t = (seg.text || "").trim();
+                                return t.length > 0 && !t.startsWith('[') && !seg.is_marker;
+                            });
+
+                            if (validSegments.length > 0) {
+                                activeSubtitleSegments = validSegments.map((seg, idx) => ({
+                                    id: idx + 1,
+                                    start: parseFloat(seg.start || 0),
+                                    end: parseFloat(seg.end || (seg.start + 2.0)),
+                                    text: seg.text || ""
+                                }));
+                                renderTimelineRows();
+                                refreshTimelineSlidersMax();
+                                if (typeof addLog === 'function') addLog(`⚡ AI TIMELINE ALIGNMENT COMPLETED (${validSegments.length} CELLS)`, 'success');
+                                alert(`AIアライメント完了: ${validSegments.length}行のタイムコードを自動割り振りました（セクションタグは自動除外）。`);
+                            } else {
+                                performLocalAutoAlignment(rawLyrics, alignerAudioEl);
+                            }
                         } else {
                             performLocalAutoAlignment(rawLyrics, alignerAudioEl);
                         }
