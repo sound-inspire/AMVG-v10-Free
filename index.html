@@ -1948,18 +1948,62 @@ finally {
         function parseAndLoadTxt(text) {
             const lines = text.split('\n');
             activeSubtitleSegments = [];
-            lines.forEach((line, idx) => {
+
+            // 設定されたBPMとOFFSETから2小節(8拍)の正確な長さを算出
+            const bpmVal = parseFloat(document.getElementById('config-bpm')?.value) || parseFloat(document.getElementById('timeline-bpm')?.value) || 120.0;
+            const offsetVal = parseFloat(document.getElementById('config-bpm-offset')?.value) || 0.0;
+
+            // 2小節分の持続時間 (秒) = (2小節 * 4拍 * 60秒) / BPM
+            const twoMeasuresDuration = (2.0 * 4.0 * 60.0) / Math.max(1.0, bpmVal);
+
+            let validCount = 0;
+            lines.forEach((line) => {
                 const clean = line.trim();
                 if (!clean || clean.startsWith('[')) return;
+                
+                const segStart = parseFloat((offsetVal + validCount * twoMeasuresDuration).toFixed(2));
+                const segEnd = parseFloat((offsetVal + (validCount + 1) * twoMeasuresDuration).toFixed(2));
+
                 activeSubtitleSegments.push({
-                    id: idx + 1,
-                    start: idx * 2.0,
-                    end: (idx + 1) * 2.0,
+                    id: validCount + 1,
+                    start: segStart,
+                    end: segEnd,
                     text: clean
                 });
+                validCount++;
             });
             renderTimelineRows();
             refreshTimelineSlidersMax();
+        }
+
+        // オフライン/API未設定時でも楽曲時間・テンポに応じた自動アライメント割り振りを行うフォールバック関数
+        function performLocalAutoAlignment(rawLyricsText, audioEl) {
+            const lines = rawLyricsText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            if (lines.length === 0) return;
+
+            const totalDuration = (audioEl && audioEl.duration && !isNaN(audioEl.duration)) ? audioEl.duration : 180.0;
+            const bpmVal = parseFloat(document.getElementById('config-bpm')?.value) || 120.0;
+            const offsetVal = parseFloat(document.getElementById('config-bpm-offset')?.value) || 0.0;
+
+            const startOffset = Math.max(0.5, offsetVal);
+            const usableDuration = Math.max(10, totalDuration - startOffset - 2.0);
+            const stepDuration = usableDuration / lines.length;
+
+            activeSubtitleSegments = lines.map((lineText, idx) => {
+                const segStart = parseFloat((startOffset + idx * stepDuration).toFixed(2));
+                const segEnd = parseFloat((segStart + Math.min(stepDuration * 0.85, 4.0)).toFixed(2));
+                return {
+                    id: idx + 1,
+                    start: segStart,
+                    end: segEnd,
+                    text: lineText
+                };
+            });
+
+            renderTimelineRows();
+            refreshTimelineSlidersMax();
+            if (typeof addLog === 'function') addLog(`SMART AUTO-ALIGNMENT COMPLETED (${lines.length} CELLS ASSIGNED)`, 'success');
+            alert(`自動時間割り振りを完了しました（全${lines.length}行にタイムコードを均等配置）。`);
         }
 
         function parseAndLoadSrt(text) {
@@ -2361,6 +2405,87 @@ finally {
                 const rawLyrics = document.getElementById('raw-lyrics-input');
                 if (rawLyrics && rawLyrics.value.trim()) {
                     parseAndLoadTxt(rawLyrics.value.trim());
+                }
+            }
+            // AI TIMELINE AUTO-GEN (AIアライメント / 楽曲・歌詞時間自動割付)
+            if (e.target.closest('#btn-ai-align')) {
+                const rawLyricsEl = document.getElementById('raw-lyrics-input');
+                const rawLyrics = rawLyricsEl ? rawLyricsEl.value.trim() : "";
+                if (!rawLyrics) {
+                    alert("歌詞テキスト（PASTE RAW LYRICS）を入力してください。");
+                    return;
+                }
+
+                const alignerAudioEl = document.getElementById('aligner-audio-element');
+                const audioInput = document.getElementById('input-audio');
+                let audioFile = (typeof selectedAudio !== 'undefined' && selectedAudio) ? selectedAudio : null;
+                if (!audioFile && audioInput && audioInput.files && audioInput.files.length > 0) {
+                    audioFile = audioInput.files[0];
+                }
+
+                const btnAiAlign = document.getElementById('btn-ai-align');
+                const originalText = btnAiAlign ? btnAiAlign.innerText : "⚡ AI TIMELINE AUTO-GEN (AIアライメント)";
+
+                if (btnAiAlign) {
+                    btnAiAlign.disabled = true;
+                    btnAiAlign.innerText = "⏳ ALIGNING TIMELINE WITH AI...";
+                }
+                if (typeof addLog === 'function') addLog("STARTING AI TIMELINE AUTO-ALIGNMENT...", "system");
+
+                // サーバーの /align API が利用可能な場合は FormData で送信
+                if (audioFile) {
+                    const formData = new FormData();
+                    formData.append('audio', audioFile);
+                    formData.append('lyrics_text', rawLyrics);
+                    
+                    const apiKeyEl = document.getElementById('gemini-api-key');
+                    if (apiKeyEl && apiKeyEl.value.trim()) {
+                        formData.append('api_key', apiKeyEl.value.trim());
+                    }
+
+                    const bpmVal = parseFloat(document.getElementById('config-bpm')?.value) || 120.0;
+                    const bpmOffsetVal = parseFloat(document.getElementById('config-bpm-offset')?.value) || 0.0;
+                    formData.append('bpm', bpmVal);
+                    formData.append('bpm_offset', bpmOffsetVal);
+
+                    fetch('/align', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success' && data.segments && data.segments.length > 0) {
+                            activeSubtitleSegments = data.segments.map((seg, idx) => ({
+                                id: idx + 1,
+                                start: parseFloat(seg.start || 0),
+                                end: parseFloat(seg.end || (seg.start + 2.0)),
+                                text: seg.text || "",
+                                track: 0
+                            }));
+                            renderTimelineRows();
+                            refreshTimelineSlidersMax();
+                            if (typeof addLog === 'function') addLog(`⚡ AI TIMELINE ALIGNMENT COMPLETED (${data.segments.length} CELLS)`, 'success');
+                            alert(`AIアライメント完了: ${data.segments.length}行のタイムコードを自動割り振りました。`);
+                        } else {
+                            performLocalAutoAlignment(rawLyrics, alignerAudioEl);
+                        }
+                    })
+                    .catch(err => {
+                        console.warn("AI Align API Fetch failed, falling back to smart local auto-alignment:", err);
+                        performLocalAutoAlignment(rawLyrics, alignerAudioEl);
+                    })
+                    .finally(() => {
+                        if (btnAiAlign) {
+                            btnAiAlign.disabled = false;
+                            btnAiAlign.innerText = originalText;
+                        }
+                    });
+                } else {
+                    performLocalAutoAlignment(rawLyrics, alignerAudioEl);
+                    if (btnAiAlign) {
+                        btnAiAlign.disabled = false;
+                        btnAiAlign.innerText = originalText;
+                    }
                 }
             }
             // LOAD EXISTING SRT
